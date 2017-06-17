@@ -1,0 +1,8 @@
+*.obj
+*.exe
+*.lib
+.vs/
+Debug/
+Release/
+*.vcxproj.user
+

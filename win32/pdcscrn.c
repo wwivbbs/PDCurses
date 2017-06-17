@@ -389,6 +389,7 @@ int PDC_scr_open(int argc, char **argv)
         exit(1);
     }
 
+#pragma warning(disable : 4996)
     is_nt = !(GetVersion() & 0x80000000);
 
     GetConsoleScreenBufferInfo(pdc_con_out, &csbi);
