@@ -29,7 +29,7 @@
 
 void address(void)
 {
-    char *fieldname[6] = 
+    char *fieldname[6] =
     {
         "Name", "Street", "City", "State", "Country", (char *)0
     };
@@ -74,7 +74,7 @@ void showfile(char *fname)
 {
     int i, bh = bodylen();
     FILE *fp;
-    char buf[MAXSTRLEN], *result;
+    char buf[MAXSTRLEN];
     bool ateof = FALSE;
 
     statusmsg("FileBrowser: Hit key to continue, Q to quit");
@@ -87,10 +87,7 @@ void showfile(char *fname)
 
             for (i = 0; i < bh - 1 && !ateof; i++)
             {
-                buf[0] = '\0';
-                result = fgets(buf, MAXSTRLEN, fp);
-
-                if (result && strlen(buf))
+                if (fgets(buf, MAXSTRLEN, fp))
                     bodymsg(buf);
                 else
                     ateof = TRUE;

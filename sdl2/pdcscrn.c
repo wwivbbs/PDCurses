@@ -4,24 +4,25 @@
 
 #include <stdlib.h>
 #ifndef PDC_WIDE
-#include "deffont.h"
+# include "deffont.h"
 #endif
 #include "deficon.h"
 
 #ifdef PDC_WIDE
 # ifndef PDC_FONT_PATH
 #  ifdef _WIN32
-#define PDC_FONT_PATH "C:/Windows/Fonts/lucon.ttf"
+#   define PDC_FONT_PATH "C:/Windows/Fonts/lucon.ttf"
 #  elif defined(__APPLE__)
-#define PDC_FONT_PATH "/Library/Fonts/Courier New.ttf"
+#   define PDC_FONT_PATH "/Library/Fonts/Courier New.ttf"
 #  else
-#define PDC_FONT_PATH "/usr/share/fonts/truetype/freefont/FreeMono.ttf"
+#   define PDC_FONT_PATH "/usr/share/fonts/truetype/freefont/FreeMono.ttf"
 #  endif
 # endif
 TTF_Font *pdc_ttffont = NULL;
 int pdc_font_size = 18;
 #endif
 
+SDL_Window *pdc_window = NULL;
 SDL_Surface *pdc_screen = NULL, *pdc_font = NULL, *pdc_icon = NULL,
             *pdc_back = NULL, *pdc_tileback = NULL;
 int pdc_sheight = 0, pdc_swidth = 0, pdc_yoffset = 0, pdc_xoffset = 0;
@@ -29,9 +30,7 @@ int pdc_sheight = 0, pdc_swidth = 0, pdc_yoffset = 0, pdc_xoffset = 0;
 SDL_Color pdc_color[16];
 Uint32 pdc_mapped[16];
 int pdc_fheight, pdc_fwidth, pdc_flastc;
-bool pdc_own_screen;
-
-static int max_height, max_width;
+bool pdc_own_window;
 
 /* COLOR_PAIR to attribute encoding table. */
 
@@ -50,7 +49,7 @@ static void _clean(void)
     SDL_FreeSurface(pdc_back);
     SDL_FreeSurface(pdc_icon);
     SDL_FreeSurface(pdc_font);
-
+    SDL_DestroyWindow(pdc_window);
     SDL_Quit();
 }
 
@@ -59,7 +58,7 @@ void PDC_retile(void)
     if (pdc_tileback)
         SDL_FreeSurface(pdc_tileback);
 
-    pdc_tileback = SDL_DisplayFormat(pdc_screen);
+    pdc_tileback = SDL_ConvertSurface(pdc_screen, pdc_screen->format, 0);
     if (pdc_tileback == NULL)
         return;
 
@@ -110,11 +109,11 @@ int PDC_scr_open(int argc, char **argv)
     if (!SP)
         return ERR;
 
-    pdc_own_screen = !pdc_screen;
+    pdc_own_window = !pdc_window;
 
-    if (pdc_own_screen)
+    if (pdc_own_window)
     {
-        if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0)
+        if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER|SDL_INIT_EVENTS) < 0)
         {
             fprintf(stderr, "Could not start SDL: %s\n", SDL_GetError());
             return ERR;
@@ -136,9 +135,9 @@ int PDC_scr_open(int argc, char **argv)
 
         ptsz = getenv("PDC_FONT_SIZE");
         if (ptsz != NULL)
-           pdc_font_size = atoi(ptsz);
+            pdc_font_size = atoi(ptsz);
         if (pdc_font_size <= 0)
-           pdc_font_size = 18;
+            pdc_font_size = 18;
 
         fname = getenv("PDC_FONT");
         pdc_ttffont = TTF_OpenFont(fname ? fname : PDC_FONT_PATH,
@@ -180,7 +179,7 @@ int PDC_scr_open(int argc, char **argv)
         pdc_back = SDL_LoadBMP(bname ? bname : "pdcback.bmp");
     }
 
-    if (!SP->mono && (pdc_back || !pdc_own_screen))
+    if (!SP->mono && (pdc_back || !pdc_own_window))
     {
         SP->orig_attr = TRUE;
         SP->orig_fore = COLOR_WHITE;
@@ -199,7 +198,7 @@ int PDC_scr_open(int argc, char **argv)
         pdc_flastc = pdc_font->format->palette->ncolors - 1;
 #endif
 
-    if (pdc_own_screen && !pdc_icon)
+    if (pdc_own_window && !pdc_icon)
     {
         const char *iname = getenv("PDC_ICON");
         pdc_icon = SDL_LoadBMP(iname ? iname : "pdcicon.bmp");
@@ -207,28 +206,43 @@ int PDC_scr_open(int argc, char **argv)
         if (!pdc_icon)
             pdc_icon = SDL_LoadBMP_RW(SDL_RWFromMem(deficon,
                                                     sizeof(deficon)), 0);
-
-        if (pdc_icon)
-            SDL_WM_SetIcon(pdc_icon, NULL);
     }
 
-    if (pdc_own_screen)
+    if (pdc_own_window)
     {
-        const SDL_VideoInfo *info = SDL_GetVideoInfo();
-        max_height = info->current_h;
-        max_width = info->current_w;
-
         const char *env = getenv("PDC_LINES");
         pdc_sheight = (env ? atoi(env) : 25) * pdc_fheight;
 
         env = getenv("PDC_COLS");
         pdc_swidth = (env ? atoi(env) : 80) * pdc_fwidth;
 
-        pdc_screen = SDL_SetVideoMode(pdc_swidth, pdc_sheight, 0,
-            SDL_SWSURFACE|SDL_ANYFORMAT|SDL_RESIZABLE);
+        pdc_window = SDL_CreateWindow((argc ? argv[0] : "PDCurses"),
+            SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, pdc_swidth,
+            pdc_sheight, SDL_WINDOW_RESIZABLE);
+        if (pdc_window == NULL)
+        {
+            fprintf(stderr, "Could not open SDL window: %s\n", SDL_GetError());
+            return ERR;
+        }
+        SDL_SetWindowIcon(pdc_window, pdc_icon);
+
+        /* Events must be pumped before calling SDL_GetWindowSurface, or
+           initial modifiers (e.g. numlock) will be ignored and out-of-sync. */
+        SDL_PumpEvents();
+
+        pdc_screen = SDL_GetWindowSurface(pdc_window);
+        if (pdc_screen == NULL)
+        {
+            fprintf(stderr, "Could not open SDL window surface: %s\n",
+                    SDL_GetError());
+            return ERR;
+        }
     }
     else
     {
+        if (!pdc_screen)
+            pdc_screen = SDL_GetWindowSurface(pdc_window);
+
         if (!pdc_sheight)
             pdc_sheight = pdc_screen->h - pdc_yoffset;
 
@@ -260,11 +274,11 @@ int PDC_scr_open(int argc, char **argv)
         pdc_mapped[i] = SDL_MapRGB(pdc_screen->format, pdc_color[i].r,
                                    pdc_color[i].g, pdc_color[i].b);
 
-    SDL_EnableUNICODE(1);
+    SDL_StartTextInput();
 
     PDC_mouse_set();
 
-    if (pdc_own_screen)
+    if (pdc_own_window)
         PDC_set_title(argc ? argv[0] : "PDCurses");
 
     SP->lines = PDC_get_rows();
@@ -282,23 +296,35 @@ int PDC_scr_open(int argc, char **argv)
 
 int PDC_resize_screen(int nlines, int ncols)
 {
-    if (!pdc_own_screen)
+#if SDL_VERSION_ATLEAST(2, 0, 5)
+    SDL_Rect max;
+    int top, left, bottom, right;
+#endif
+
+    if (!pdc_own_window)
         return ERR;
+
+#if SDL_VERSION_ATLEAST(2, 0, 5)
+    SDL_GetDisplayUsableBounds(0, &max);
+    SDL_GetWindowBordersSize(pdc_window, &top, &left, &bottom, &right);
+    max.h -= top + bottom;
+    max.w -= left + right;
+#endif
 
     if (nlines && ncols)
     {
-        while (nlines * pdc_fheight > max_height)
+#if SDL_VERSION_ATLEAST(2, 0, 5)
+        while (nlines * pdc_fheight > max.h)
             nlines--;
-        pdc_sheight = nlines * pdc_fheight;
-        while (ncols * pdc_fwidth > max_width)
+        while (ncols * pdc_fwidth > max.w)
             ncols--;
+#endif
+        pdc_sheight = nlines * pdc_fheight;
         pdc_swidth = ncols * pdc_fwidth;
     }
 
-    SDL_FreeSurface(pdc_screen);
-
-    pdc_screen = SDL_SetVideoMode(pdc_swidth, pdc_sheight, 0,
-        SDL_SWSURFACE|SDL_ANYFORMAT|SDL_RESIZABLE);
+    SDL_SetWindowSize(pdc_window, pdc_swidth, pdc_sheight);
+    pdc_screen = SDL_GetWindowSurface(pdc_window);
 
     if (pdc_tileback)
         PDC_retile();
@@ -314,14 +340,12 @@ void PDC_reset_prog_mode(void)
     PDC_LOG(("PDC_reset_prog_mode() - called.\n"));
 
     PDC_flushinp();
-    SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 }
 
 void PDC_reset_shell_mode(void)
 {
     PDC_LOG(("PDC_reset_shell_mode() - called.\n"));
 
-    SDL_EnableKeyRepeat(0, 0);
     PDC_flushinp();
 }
 

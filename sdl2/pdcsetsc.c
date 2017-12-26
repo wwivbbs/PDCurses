@@ -1,8 +1,6 @@
 /* Public Domain Curses */
 
-#include "pdcx11.h"
-
-#include <string.h>
+#include "pdcsdl.h"
 
 /*man-start**************************************************************
 
@@ -37,34 +35,24 @@ pdcsetsc
 
 int PDC_curs_set(int visibility)
 {
-    int ret_vis = SP->visibility;
+    int ret_vis;
 
     PDC_LOG(("PDC_curs_set() - called: visibility=%d\n", visibility));
 
-    if (visibility != -1)
-        SP->visibility = visibility;
+    ret_vis = SP->visibility;
 
-    PDC_display_cursor(SP->cursrow, SP->curscol, SP->cursrow,
-                       SP->curscol, visibility);
+    SP->visibility = visibility;
+
+    PDC_gotoyx(SP->cursrow, SP->curscol);
 
     return ret_vis;
 }
 
 void PDC_set_title(const char *title)
 {
-    int len;
-
     PDC_LOG(("PDC_set_title() - called:<%s>\n", title));
 
-    len = strlen(title) + 1;        /* write nul character */
-
-    XCursesInstruct(CURSES_TITLE);
-
-    if (XC_write_display_socket_int(len) >= 0)
-        if (XC_write_socket(xc_display_sock, title, len) >= 0)
-            return;
-
-    XCursesExitCursesProcess(1, "exiting from PDC_set_title");
+    SDL_SetWindowTitle(pdc_window, title);
 }
 
 int PDC_set_blink(bool blinkon)

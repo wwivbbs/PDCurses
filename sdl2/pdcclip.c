@@ -1,6 +1,8 @@
 /* Public Domain Curses */
 
-#include "pdcwin.h"
+#include "pdcsdl.h"
+
+#include <stdlib.h>
 
 /*man-start**************************************************************
 
@@ -18,7 +20,7 @@ clipboard
 
    PDC_getclipboard() gets the textual contents of the system's
    clipboard. This function returns the contents of the clipboard
-   in the contents argument. It is the responsibility of the
+   in the contents argument. It is the responsibilitiy of the
    caller to free the memory returned, via PDC_freeclipboard().
    The length of the clipboard contents is returned in the length
    argument.
@@ -46,86 +48,24 @@ clipboard
 
 **man-end****************************************************************/
 
-#ifdef PDC_WIDE
-# define PDC_TEXT CF_UNICODETEXT
-#else
-# define PDC_TEXT CF_OEMTEXT
-#endif
-
 int PDC_getclipboard(char **contents, long *length)
 {
-    HANDLE handle;
-    long len;
-
     PDC_LOG(("PDC_getclipboard() - called\n"));
 
-    if (!OpenClipboard(NULL))
-        return PDC_CLIP_ACCESS_ERROR;
-
-    if ((handle = GetClipboardData(PDC_TEXT)) == NULL)
-    {
-        CloseClipboard();
+    if (SDL_HasClipboardText() == SDL_FALSE)
         return PDC_CLIP_EMPTY;
-    }
-
-#ifdef PDC_WIDE
-    len = wcslen((wchar_t *)handle) * 3;
-#else
-    len = strlen((char *)handle);
-#endif
-    *contents = (char *)GlobalAlloc(GMEM_FIXED, len + 1);
-
-    if (!*contents)
-    {
-        CloseClipboard();
-        return PDC_CLIP_MEMORY_ERROR;
-    }
-
-#ifdef PDC_WIDE
-    len = PDC_wcstombs((char *)*contents, (wchar_t *)handle, len);
-#else
-    strcpy((char *)*contents, (char *)handle);
-#endif
-    *length = len;
-    CloseClipboard();
+    *contents = SDL_GetClipboardText();
+    *length = strlen(*contents);
 
     return PDC_CLIP_SUCCESS;
 }
 
 int PDC_setclipboard(const char *contents, long length)
 {
-    HGLOBAL ptr1;
-    LPTSTR ptr2;
-
     PDC_LOG(("PDC_setclipboard() - called\n"));
 
-    if (!OpenClipboard(NULL))
+    if (SDL_SetClipboardText(contents) != 0)
         return PDC_CLIP_ACCESS_ERROR;
-
-    ptr1 = GlobalAlloc(GMEM_MOVEABLE|GMEM_DDESHARE, 
-        (length + 1) * sizeof(TCHAR));
-
-    if (!ptr1)
-        return PDC_CLIP_MEMORY_ERROR;
-
-    ptr2 = GlobalLock(ptr1);
-
-#ifdef PDC_WIDE
-    PDC_mbstowcs((wchar_t *)ptr2, contents, length);
-#else
-    memcpy((char *)ptr2, contents, length + 1);
-#endif
-    GlobalUnlock(ptr1);
-    EmptyClipboard();
-
-    if (!SetClipboardData(PDC_TEXT, ptr1))
-    {
-        GlobalFree(ptr1);
-        return PDC_CLIP_ACCESS_ERROR;
-    }
-
-    CloseClipboard();
-    GlobalFree(ptr1);
 
     return PDC_CLIP_SUCCESS;
 }
@@ -134,7 +74,8 @@ int PDC_freeclipboard(char *contents)
 {
     PDC_LOG(("PDC_freeclipboard() - called\n"));
 
-    GlobalFree(contents);
+    SDL_free(contents);
+
     return PDC_CLIP_SUCCESS;
 }
 
@@ -142,7 +83,10 @@ int PDC_clearclipboard(void)
 {
     PDC_LOG(("PDC_clearclipboard() - called\n"));
 
-    EmptyClipboard();
+    if (SDL_HasClipboardText() == SDL_TRUE)
+    {
+        SDL_SetClipboardText(NULL);
+    }
 
     return PDC_CLIP_SUCCESS;
 }

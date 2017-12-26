@@ -111,6 +111,9 @@ static struct
  {XK_F20,       FALSE,  KEY_F(20),   KEY_F(32),    KEY_F(44),   KEY_F(56)},
  {XK_BackSpace, FALSE,  0x08,        0x08,         CTL_BKSP,    ALT_BKSP},
  {XK_Tab,       FALSE,  0x09,        KEY_BTAB,     CTL_TAB,     ALT_TAB},
+#if defined(XK_ISO_Left_Tab)
+ {XK_ISO_Left_Tab, FALSE, 0x09,      KEY_BTAB,     CTL_TAB,     ALT_TAB},
+#endif
  {XK_Select,    FALSE,  KEY_SELECT,  KEY_SELECT,   KEY_SELECT,  KEY_SELECT},
  {XK_Print,     FALSE,  KEY_PRINT,   KEY_SPRINT,   KEY_PRINT,   KEY_PRINT},
  {XK_Find,      FALSE,  KEY_FIND,    KEY_SFIND,    KEY_FIND,    KEY_FIND},
@@ -123,6 +126,8 @@ static struct
  {XK_L6,        FALSE,  KEY_COPY,    KEY_SCOPY,    KEY_COPY,    KEY_COPY},
  {XK_L9,        FALSE,  KEY_FIND,    KEY_SFIND,    KEY_FIND,    KEY_FIND},
  {XK_Menu,      FALSE,  KEY_OPTIONS, KEY_SOPTIONS, KEY_OPTIONS, KEY_OPTIONS},
+ {XK_Super_R,   FALSE,  KEY_COMMAND, KEY_SCOMMAND, KEY_COMMAND, KEY_COMMAND},
+ {XK_Super_L,   FALSE,  KEY_COMMAND, KEY_SCOMMAND, KEY_COMMAND, KEY_COMMAND},
 #ifdef HAVE_SUNKEYSYM_H
  {SunXK_F36,    FALSE,  KEY_F(41),   KEY_F(43),    KEY_F(45),   KEY_F(47)},
  {SunXK_F37,    FALSE,  KEY_F(42),   KEY_F(44),    KEY_F(46),   KEY_F(48)},
@@ -209,7 +214,7 @@ static struct
 
 unsigned long pdc_key_modifiers = 0L;
 
-static GC normal_gc, block_cursor_gc, rect_cursor_gc, italic_gc, border_gc;
+static GC normal_gc, rect_cursor_gc, italic_gc, border_gc;
 static int font_height, font_width, font_ascent, font_descent,
            window_width, window_height;
 static int resize_window_width = 0, resize_window_height = 0;
@@ -1802,42 +1807,15 @@ static void _display_cursor(int old_row, int old_x, int new_row, int new_x)
     }
     else
     {
-        if (SP->visibility == 1)
-        {
-            /* cursor visibility normal */
+        /* For block cursors, paint the block with invert. */
 
-            XSetForeground(XCURSESDISPLAY, rect_cursor_gc, colors[back]);
+        int yp = ypos - font_height + xc_app_data.normalFont->descent;
+        int yh = font_height;
 
-            for (i = 0; i < xc_app_data.normalFont->descent + 2; i++)
-                XDrawLine(XCURSESDISPLAY, XCURSESWIN, rect_cursor_gc,
-                          xpos, ypos - 2 + i, xpos + font_width, ypos - 2 + i);
-        }
-        else
-        {
-            /* cursor visibility high */
-#ifdef PDC_WIDE
-            XChar2b buf[2];
-
-            buf[0].byte1 = (*ch & 0xff00) >> 8;
-            buf[0].byte2 = *ch & 0x00ff;
-
-            buf[1].byte1 = buf[1].byte2 = 0;
-#else
-            char buf[2];
-
-            buf[0] = *ch & 0xff;
-            buf[1] = '\0';
-#endif
-            XSetForeground(XCURSESDISPLAY, block_cursor_gc, colors[fore]);
-            XSetBackground(XCURSESDISPLAY, block_cursor_gc, colors[back]);
-#ifdef PDC_WIDE
-            XDrawImageString16(
-#else
-            XDrawImageString(
-#endif
-                             XCURSESDISPLAY, XCURSESWIN, block_cursor_gc,
-                             xpos, ypos, buf, 1);
-        }
+        if (SP->visibility == 1) yh /= 2, yp += yh;
+        XSetFunction(XCURSESDISPLAY, rect_cursor_gc, GXinvert);
+        XFillRectangle(XCURSESDISPLAY, XCURSESWIN, rect_cursor_gc,
+            xpos, yp, font_width, yh);
     }
 
     PDC_LOG(("%s:_display_cursor() - draw cursor at row %d col %d\n",
@@ -2327,7 +2305,6 @@ static void _exit_process(int rc, int sig, char *msg)
 #endif
     XFreeGC(XCURSESDISPLAY, normal_gc);
     XFreeGC(XCURSESDISPLAY, italic_gc);
-    XFreeGC(XCURSESDISPLAY, block_cursor_gc);
     XFreeGC(XCURSESDISPLAY, rect_cursor_gc);
     XFreeGC(XCURSESDISPLAY, border_gc);
 #ifdef PDC_XIM
@@ -3127,9 +3104,6 @@ int XCursesSetupX(int argc, char *argv[])
 
     _get_gc(&italic_gc, italic_font_valid ? xc_app_data.italicFont : 
             xc_app_data.normalFont, COLOR_WHITE, COLOR_BLACK);
-
-    _get_gc(&block_cursor_gc, xc_app_data.normalFont,
-            COLOR_BLACK, COLOR_CURSOR);
 
     _get_gc(&rect_cursor_gc, xc_app_data.normalFont,
             COLOR_CURSOR, COLOR_BLACK);

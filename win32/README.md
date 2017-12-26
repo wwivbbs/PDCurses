@@ -1,8 +1,8 @@
-PDCurses for Win32
-==================
+PDCurses for Windows console
+============================
 
-This directory contains PDCurses source code files specific to Win32 
-console mode (Win9x/Me/NT/2k/XP/Vista).
+This directory contains PDCurses source code files specific to the
+Microsoft Windows console.
 
 
 Building
@@ -13,7 +13,6 @@ Building
         bccwin32.mak  - Borland C++ 4.0.2+
         dmcwin32.mak  - Digital Mars
         gccwin32.mak  - Cygnus GNU Compiler
-        lccwin32.mak  - LCC-Win32
         mingwin32.mak - MinGW
         vcwin32.mak   - Microsoft Visual C++ 2.0+
         wccwin32.mak  - Open Watcom 1.8+
@@ -24,8 +23,8 @@ Building
 
         set PDCURSES_SRCDIR=c:\pdcurses
 
-  This won't work with the LCC or Digital Mars makefiles, nor will the
-  options described below.
+  This won't work with the Digital Mars makefiles, nor will the options
+  described below.
 
 - Build it:
 
@@ -38,7 +37,7 @@ Building
   for convenience; both panel and curses functions are in the main
   library.
 
-  You can also give the optional parameter "WIDE=Y", to build the 
+  You can also give the optional parameter "WIDE=Y", to build the
   library with wide-character (Unicode) support:
 
         make -f mingwin32.mak WIDE=Y
@@ -73,4 +72,5 @@ The files in this directory are released to the Public Domain.
 Acknowledgements
 ----------------
 
-Generic Win32 port was provided by Chris Szurgot <szurgot@itribe.net>
+Windows console port was originally provided by Chris Szurgot
+<szurgot@itribe.net>

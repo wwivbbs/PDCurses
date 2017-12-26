@@ -212,7 +212,8 @@ int main(int argc, char **argv)
 {
     WINDOW *win;
     chtype save[80], ch;
-    int width, height, w, x, y, i, j, seed;
+    time_t seed;
+    int width, height, w, x, y, i, j;
 
 #ifdef XCURSES
     Xinitscr(argc, argv);
@@ -220,7 +221,7 @@ int main(int argc, char **argv)
     initscr();
 #endif
     seed = time((time_t *)0);
-        srand(seed);
+    srand(seed);
 
     start_color();
 # if defined(NCURSES_VERSION) || (defined(PDC_BUILD) && PDC_BUILD > 3000)
@@ -236,7 +237,7 @@ int main(int argc, char **argv)
 #endif
     noecho();
 
-    /* refresh stdscr so that reading from it will not cause it to 
+    /* refresh stdscr so that reading from it will not cause it to
        overwrite the other windows that are being created */
 
     refresh();
@@ -265,7 +266,7 @@ int main(int argc, char **argv)
         wattrset(win, COLOR_PAIR(2));
         box(win, ' ', ' ');
         wrefresh(win);
-      
+
         wattrset(win, 0);
 
         /* Do random output of a character */
@@ -326,8 +327,8 @@ int main(int argc, char **argv)
 
         init_pair(5, COLOR_BLUE, COLOR_WHITE);
         wattrset(win, COLOR_PAIR(5) | A_BLINK);
-        mvwaddstr(win, height - 2, 3,
-            " PDCurses 3.4 - DOS, OS/2, Win32, X11, SDL");
+        mvwaddstr(win, height - 2, 2,
+            " PDCurses 3.4 - DOS, OS/2, Windows, X11, SDL");
         wrefresh(win);
 
         /* Draw running messages */
@@ -393,8 +394,8 @@ int main(int argc, char **argv)
 
         i = height - 2;
         wattrset(win, COLOR_PAIR(5));
-        mvwaddstr(win, i, 3,
-            "   Type a key to continue or ESC to quit  ");
+        mvwaddstr(win, i, 2,
+            "    Type a key to continue or ESC to quit   ");
         wrefresh(win);
 
         if (WaitForUser() == '\033')
