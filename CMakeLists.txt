@@ -56,13 +56,13 @@ set(COMMON_SOURCES
 
 if(WIN32)
   set(PLATFORM_SOURCES 
-	win32/pdcclip.c
-	win32/pdcdisp.c
-	win32/pdcgetsc.c
-	win32/pdckbd.c
-	win32/pdcscrn.c
-	win32/pdcsetsc.c
-	win32/pdcutil.c
+	wincon/pdcclip.c
+	wincon/pdcdisp.c
+	wincon/pdcgetsc.c
+	wincon/pdckbd.c
+	wincon/pdcscrn.c
+	wincon/pdcsetsc.c
+	wincon/pdcutil.c
     )
 endif()
 
