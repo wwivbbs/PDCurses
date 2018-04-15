@@ -72,6 +72,7 @@ static SDL_Rect uprect[MAXRECT];       /* table of rects to update */
 static chtype oldch = (chtype)(-1);    /* current attribute */
 static int rectcount = 0;              /* index into uprect */
 static short foregr = -2, backgr = -2; /* current foreground, background */
+static bool blinked_off = FALSE;
 
 /* do the real updates on a delay */
 
@@ -96,6 +97,8 @@ void PDC_update_rects(void)
 
 static void _set_attr(chtype ch)
 {
+    attr_t sysattrs = SP->termattrs;
+
     ch &= (A_COLOR|A_BOLD|A_BLINK|A_REVERSE);
 
     if (oldch != ch)
@@ -107,8 +110,10 @@ static void _set_attr(chtype ch)
 
         PDC_pair_content(PAIR_NUMBER(ch), &newfg, &newbg);
 
-        newfg |= (ch & A_BOLD) ? 8 : 0;
-        newbg |= (ch & A_BLINK) ? 8 : 0;
+        if ((ch & A_BOLD) && !(sysattrs & A_BOLD))
+            newfg |= 8;
+        if ((ch & A_BLINK) && !(sysattrs & A_BLINK))
+            newbg |= 8;
 
         if (ch & A_REVERSE)
         {
@@ -280,17 +285,17 @@ static void _highlight(SDL_Rect *src, SDL_Rect *dest, chtype ch)
 #endif
     }
 
-    if (ch & (A_LEFTLINE|A_RIGHTLINE))
+    if (ch & (A_LEFT | A_RIGHT))
     {
         if (col == -1)
             col = foregr;
 
         dest->w = 1;
 
-        if (ch & A_LEFTLINE)
+        if (ch & A_LEFT)
             SDL_FillRect(pdc_screen, dest, pdc_mapped[col]);
 
-        if (ch & A_RIGHTLINE)
+        if (ch & A_RIGHT)
         {
             dest->x += pdc_fwidth - 1;
             SDL_FillRect(pdc_screen, dest, pdc_mapped[col]);
@@ -311,6 +316,7 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
 #ifdef PDC_WIDE
     Uint16 chstr[2] = {0, 0};
 #endif
+    attr_t sysattrs = SP->termattrs;
 
     PDC_LOG(("PDC_transform_line() - called: lineno=%d\n", lineno));
 
@@ -355,6 +361,10 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
         chtype ch = srcp[j];
 
         _set_attr(ch);
+
+        if (blinked_off && (ch & A_BLINK) && (sysattrs & A_BLINK))
+            ch = (ch & A_ATTRIBUTES) | ' ';
+
 #ifdef CHTYPE_LONG
         if (ch & A_ALTCHARSET && !(ch & 0xff80))
             ch = (ch & (A_ATTRIBUTES ^ A_ALTCHARSET)) | acs_map[ch & 0x7f];
@@ -364,6 +374,13 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
 
 #ifdef PDC_WIDE
         chstr[0] = ch & A_CHARTEXT;
+
+        TTF_SetFontStyle(pdc_ttffont,
+            ( ((ch & A_BOLD) && (sysattrs & A_BOLD)) ?
+              TTF_STYLE_BOLD : 0) |
+            ( ((ch & A_ITALIC) && (sysattrs & A_ITALIC)) ?
+              TTF_STYLE_ITALIC : 0) );
+
         pdc_font = TTF_RenderUNICODE_Solid(pdc_ttffont, chstr,
                                            pdc_color[foregr]);
 
@@ -386,9 +403,57 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
         SDL_LowerBlit(pdc_font, &src, pdc_screen, &dest);
 #endif
 
-        if (ch & (A_UNDERLINE|A_LEFTLINE|A_RIGHTLINE))
+        if (!(blinked_off && (ch & A_BLINK) && (sysattrs & A_BLINK)) &&
+            (ch & (A_UNDERLINE | A_LEFT | A_RIGHT)))
             _highlight(&src, &dest, ch);
 
         dest.x += pdc_fwidth;
     }
+}
+
+static Uint32 _blink_timer(Uint32 interval, void *param)
+{
+    SDL_Event event;
+
+    event.type = SDL_USEREVENT;
+    SDL_PushEvent(&event);
+    return(interval);
+}
+
+void PDC_blink_text(void)
+{
+    static SDL_TimerID blinker_id = 0;
+    int i, j, k;
+
+    oldch = (chtype)(-1);
+
+    if (!(SP->termattrs & A_BLINK))
+    {
+        SDL_RemoveTimer(blinker_id);
+        blinker_id = 0;
+    }
+    else if (!blinker_id)
+    {
+        blinker_id = SDL_AddTimer(500, _blink_timer, NULL);
+        blinked_off = TRUE;
+    }
+
+    blinked_off = !blinked_off;
+
+    for (i = 0; i < SP->lines; i++)
+    {
+        const chtype *srcp = curscr->_y[i];
+
+        for (j = 0; j < SP->cols; j++)
+            if (srcp[j] & A_BLINK)
+            {
+                k = j;
+                while (k < SP->cols && (srcp[k] & A_BLINK))
+                    k++;
+                PDC_transform_line(i, j, k - j, srcp + j);
+                j = k;
+            }
+    }
+
+    oldch = (chtype)(-1);
 }

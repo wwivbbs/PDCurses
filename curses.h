@@ -29,7 +29,7 @@ PDCurses portable platform definitions list:
 
 **man-end****************************************************************/
 
-#define PDC_BUILD 3401
+#define PDC_BUILD 3601
 #define PDCURSES        1      /* PDCurses-only routines */
 #define XOPEN           1      /* X/Open Curses routines */
 #define SYSVcurses      1      /* System V Curses routines */
@@ -184,8 +184,8 @@ typedef struct
 #define BUTTON3_TRIPLE_CLICKED  0x00004000L
 #define BUTTON3_MOVED           0x00004000L /* PDCurses */
 
-/* For the ncurses-compatible functions only, BUTTON4_PRESSED and 
-   BUTTON5_PRESSED are returned for mouse scroll wheel up and down; 
+/* For the ncurses-compatible functions only, BUTTON4_PRESSED and
+   BUTTON5_PRESSED are returned for mouse scroll wheel up and down;
    otherwise PDCurses doesn't support buttons 4 and 5 */
 
 #define BUTTON4_RELEASED        0x00008000L
@@ -265,7 +265,7 @@ typedef struct _win       /* definition of a window */
     struct _win *_parent; /* subwin's pointer to parent win */
 } WINDOW;
 
-/* Avoid using the SCREEN struct directly -- use the corresponding 
+/* Avoid using the SCREEN struct directly -- use the corresponding
    functions if possible. This struct may eventually be made private. */
 
 typedef struct
@@ -291,12 +291,12 @@ typedef struct
     unsigned long _trap_mbe;       /* trap these mouse button events */
     unsigned long _map_mbe_to_key; /* map mouse buttons to slk */
     int   mouse_wait;              /* time to wait (in ms) for a
-                                      button release after a press, in 
+                                      button release after a press, in
                                       order to count it as a click */
     int   slklines;                /* lines in use by slk_init() */
     WINDOW *slk_winptr;            /* window for slk */
     int   linesrippedoff;          /* lines ripped off via ripoffline() */
-    int   linesrippedoffontop;     /* lines ripped off on 
+    int   linesrippedoffontop;     /* lines ripped off on
                                       top via ripoffline() */
     int   delaytenths;             /* 1/10ths second to wait block
                                       getch() for */
@@ -321,6 +321,7 @@ typedef struct
     int   sb_cur_x;
 #endif
     short line_color;     /* color of line attributes - default -1 */
+    attr_t termattrs;     /* attribute capabilities */
 } SCREEN;
 
 /*----------------------------------------------------------------------
@@ -356,13 +357,13 @@ PDCEX  char         ttytype[];    /* terminal name/description */
 PDCurses Text Attributes
 ========================
 
-Originally, PDCurses used a short (16 bits) for its chtype. To include 
-color, a number of things had to be sacrificed from the strict Unix and 
-System V support. The main problem was fitting all character attributes 
+Originally, PDCurses used a short (16 bits) for its chtype. To include
+color, a number of things had to be sacrificed from the strict Unix and
+System V support. The main problem was fitting all character attributes
 and color into an unsigned char (all 8 bits!).
 
-Today, PDCurses by default uses a long (32 bits) for its chtype, as in 
-System V. The short chtype is still available, by undefining CHTYPE_LONG 
+Today, PDCurses by default uses a long (32 bits) for its chtype, as in
+System V. The short chtype is still available, by undefining CHTYPE_LONG
 and rebuilding the library.
 
 The following is the structure of a win->_attrs chtype:
@@ -374,9 +375,9 @@ short form:
     +-----------------------------------------------+
       color number |  attrs |   character eg 'a'
 
-The available non-color attributes are bold, reverse and blink. Others 
-have no effect. The high order char is an index into an array of 
-physical colors (defined in color.c) -- 32 foreground/background color 
+The available non-color attributes are bold, reverse and blink. Others
+have no effect. The high order char is an index into an array of
+physical colors (defined in color.c) -- 32 foreground/background color
 pairs (5 bits) plus 3 bits for other attributes.
 
 long form:
@@ -386,9 +387,10 @@ long form:
     +--------------------------------------------------------------------+
           color number      |     modifiers         |   character eg 'a'
 
-The available non-color attributes are bold, underline, invisible, 
-right-line, left-line, protect, reverse and blink. 256 color pairs (8 
-bits), 8 bits for other attributes, and 16 bits for character data.
+The available non-color attributes are bold, underline, right-line,
+left-line, italic, reverse and blink, plus the alternate character set
+indicator. 256 color pairs (8 bits), 8 bits for other attributes, and 16
+bits for character data.
 
 **man-end****************************************************************/
 
@@ -398,9 +400,9 @@ bits), 8 bits for other attributes, and 16 bits for character data.
 
 #ifdef CHTYPE_LONG
 # define A_ALTCHARSET (chtype)0x00010000
-# define A_RIGHTLINE  (chtype)0x00020000
-# define A_LEFTLINE   (chtype)0x00040000
-# define A_INVIS      (chtype)0x00080000
+# define A_RIGHT      (chtype)0x00020000
+# define A_LEFT       (chtype)0x00040000
+# define A_ITALIC     (chtype)0x00080000
 # define A_UNDERLINE  (chtype)0x00100000
 # define A_REVERSE    (chtype)0x00200000
 # define A_BLINK      (chtype)0x00400000
@@ -409,9 +411,6 @@ bits), 8 bits for other attributes, and 16 bits for character data.
 # define A_ATTRIBUTES (chtype)0xffff0000
 # define A_CHARTEXT   (chtype)0x0000ffff
 # define A_COLOR      (chtype)0xff000000
-
-# define A_ITALIC     A_INVIS
-# define A_PROTECT    (A_UNDERLINE | A_LEFTLINE | A_RIGHTLINE)
 
 # define PDC_COLOR_SHIFT 24
 #else
@@ -424,25 +423,33 @@ bits), 8 bits for other attributes, and 16 bits for character data.
 # define A_COLOR      (chtype)0xf800  /* System V */
 
 # define A_ALTCHARSET A_NORMAL        /* X/Open */
-# define A_PROTECT    A_NORMAL        /* X/Open */
 # define A_UNDERLINE  A_NORMAL        /* X/Open */
 
-# define A_LEFTLINE   A_NORMAL
-# define A_RIGHTLINE  A_NORMAL
+# define A_LEFT       A_NORMAL
+# define A_RIGHT      A_NORMAL
 # define A_ITALIC     A_NORMAL
-# define A_INVIS      A_NORMAL
 
 # define PDC_COLOR_SHIFT 11
 #endif
 
+#define A_LEFTLINE    A_LEFT
+#define A_RIGHTLINE   A_RIGHT
 #define A_STANDOUT    (A_REVERSE | A_BOLD) /* X/Open */
+
 #define A_DIM         A_NORMAL
+#define A_INVIS       A_NORMAL
+#define A_PROTECT     A_NORMAL
+
+#define A_HORIZONTAL  A_NORMAL
+#define A_LOW         A_NORMAL
+#define A_TOP         A_NORMAL
+#define A_VERTICAL    A_NORMAL
 
 #define CHR_MSK       A_CHARTEXT           /* Obsolete */
 #define ATR_MSK       A_ATTRIBUTES         /* Obsolete */
 #define ATR_NRM       A_NORMAL             /* Obsolete */
 
-/* For use with attr_t -- X/Open says, "these shall be distinct", so 
+/* For use with attr_t -- X/Open says, "these shall be distinct", so
    this is a non-conforming implementation. */
 
 #define WA_NORMAL     A_NORMAL
@@ -452,24 +459,25 @@ bits), 8 bits for other attributes, and 16 bits for character data.
 #define WA_BOLD       A_BOLD
 #define WA_DIM        A_DIM
 #define WA_INVIS      A_INVIS
-#define WA_LEFT       A_LEFTLINE
+#define WA_ITALIC     A_ITALIC
+#define WA_LEFT       A_LEFT
 #define WA_PROTECT    A_PROTECT
 #define WA_REVERSE    A_REVERSE
-#define WA_RIGHT      A_RIGHTLINE
+#define WA_RIGHT      A_RIGHT
 #define WA_STANDOUT   A_STANDOUT
 #define WA_UNDERLINE  A_UNDERLINE
 
-#define WA_HORIZONTAL A_NORMAL
-#define WA_LOW        A_NORMAL
-#define WA_TOP        A_NORMAL
-#define WA_VERTICAL   A_NORMAL
+#define WA_HORIZONTAL A_HORIZONTAL
+#define WA_LOW        A_LOW
+#define WA_TOP        A_TOP
+#define WA_VERTICAL   A_VERTICAL
 
 #define WA_ATTRIBUTES A_ATTRIBUTES
 
 /*** Alternate character set macros ***/
 
 /* 'w' = 32-bit chtype; acs_map[] index | A_ALTCHARSET
-   'n' = 16-bit chtype; it gets the fallback set because no bit is 
+   'n' = 16-bit chtype; it gets the fallback set because no bit is
          available for A_ALTCHARSET */
 
 #ifdef CHTYPE_LONG
@@ -1149,6 +1157,8 @@ PDCEX  int     addwstr(const wchar_t *);
 PDCEX  int     add_wch(const cchar_t *);
 PDCEX  int     add_wchnstr(const cchar_t *, int);
 PDCEX  int     add_wchstr(const cchar_t *);
+PDCEX  int     bkgrnd(const cchar_t *);
+PDCEX  void    bkgrndset(const cchar_t *);
 PDCEX  int     border_set(const cchar_t *, const cchar_t *, const cchar_t *,
                           const cchar_t *, const cchar_t *, const cchar_t *,
                           const cchar_t *, const cchar_t *);
@@ -1316,6 +1326,7 @@ PDCEX  wchar_t *slk_wlabel(int);
 PDCEX  void    PDC_debug(const char *, ...);
 PDCEX  int     PDC_ungetch(int);
 PDCEX  int     PDC_set_blink(bool);
+PDCEX  int     PDC_set_bold(bool);
 PDCEX  int     PDC_set_line_color(short);
 PDCEX  void    PDC_set_title(const char *);
 

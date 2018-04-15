@@ -1,11 +1,13 @@
-# GNU MAKE Makefile for PDCurses library - WIN32 MinGW GCC
+# GNU MAKE (3.79.1) Makefile for PDCurses library - DOS DJGPP V2.0+
 #
-# Usage: make -f [path\]mingwin32.mak [DEBUG=Y] [DLL=Y] [WIDE=Y] [UTF8=Y] [tgt]
+# Usage: make [-f path\Makefile] [DEBUG=Y] [target]
 #
-# where tgt can be any of:
-# [all|demos|pdcurses.a|testcurs.exe...]
+# where target can be any of:
+# [all|libs|demos|dist|pdcurses.a|testcurs.exe...]
 
 O = o
+E = .exe
+RM = del
 
 ifndef PDCURSES_SRCDIR
 	PDCURSES_SRCDIR = ..
@@ -14,9 +16,9 @@ endif
 include $(PDCURSES_SRCDIR)/version.mif
 include $(PDCURSES_SRCDIR)/libobjs.mif
 
-osdir		= $(PDCURSES_SRCDIR)/win32
+osdir		= $(PDCURSES_SRCDIR)/dos
 
-PDCURSES_WIN_H	= $(osdir)/pdcwin.h
+PDCURSES_DOS_H	= $(osdir)/pdcdos.h
 
 CC		= gcc
 
@@ -30,53 +32,34 @@ endif
 
 CFLAGS += -I$(PDCURSES_SRCDIR)
 
-ifeq ($(WIDE),Y)
-	CFLAGS += -DPDC_WIDE
-endif
-
-ifeq ($(UTF8),Y)
-	CFLAGS += -DPDC_FORCE_UTF8
-endif
-
 LINK		= gcc
 
-ifeq ($(DLL),Y)
-	CFLAGS += -DPDC_DLL_BUILD
-	LIBEXE = gcc
-	LIBFLAGS = -Wl,--out-implib,pdcurses.a -shared -o
-	LIBCURSES = pdcurses.dll
-	LIBDEPS = $(LIBOBJS) $(PDCOBJS)
-	CLEAN = $(LIBCURSES) *.a
-else
-	LIBEXE = ar
-	LIBFLAGS = rcv
-	LIBCURSES = pdcurses.a
-	LIBDEPS = $(LIBOBJS) $(PDCOBJS)
-	CLEAN = *.a
-endif
+LIBEXE		= ar
+LIBFLAGS	= rcv
+
+LIBCURSES	= pdcurses.a
 
 .PHONY: all libs clean demos dist
 
-all:	libs demos
+all:	libs
 
 libs:	$(LIBCURSES)
 
 clean:
-	-del *.o
-	-del *.exe
-	-del $(CLEAN)
+	-$(RM) *.o
+	-$(RM) *.a
+	-$(RM) *.exe
 
 demos:	$(DEMOS)
 ifneq ($(DEBUG),Y)
 	strip *.exe
 endif
 
-$(LIBCURSES) : $(LIBDEPS)
+$(LIBCURSES) : $(LIBOBJS) $(PDCOBJS)
 	$(LIBEXE) $(LIBFLAGS) $@ $?
-	-copy pdcurses.a panel.a
 
 $(LIBOBJS) $(PDCOBJS) : $(PDCURSES_HEADERS)
-$(PDCOBJS) : $(PDCURSES_WIN_H)
+$(PDCOBJS) : $(PDCURSES_DOS_H)
 $(DEMOS) : $(PDCURSES_CURSES_H) $(LIBCURSES)
 panel.o : $(PANEL_HEADER)
 terminfo.o: $(TERM_HEADER)
@@ -87,7 +70,7 @@ $(LIBOBJS) : %.o: $(srcdir)/%.c
 $(PDCOBJS) : %.o: $(osdir)/%.c
 	$(CC) -c $(CFLAGS) $<
 
-firework.exe newdemo.exe rain.exe testcurs.exe worm.exe xmas.exe \
+firework.exe ozdemo.exe rain.exe testcurs.exe worm.exe xmas.exe \
 ptest.exe: %.exe: $(demodir)/%.c
 	$(CC) $(CFLAGS) -o$@ $< $(LIBCURSES)
 
@@ -100,8 +83,8 @@ tui.o: $(demodir)/tui.c $(demodir)/tui.h $(PDCURSES_CURSES_H)
 tuidemo.o: $(demodir)/tuidemo.c $(PDCURSES_CURSES_H)
 	$(CC) -c $(CFLAGS) -I$(demodir) -o$@ $<
 
-PLATFORM1 = MinGW Win32
-PLATFORM2 = MinGW for Win32
-ARCNAME = pdc$(VER)_ming_w32
+PLATFORM1 = DJGPP 2.05
+PLATFORM2 = DJGPP 2.05 for DOS
+ARCNAME = pdc$(VER)djg
 
 include $(PDCURSES_SRCDIR)/makedist.mif

@@ -1,11 +1,18 @@
-# GNU MAKE Makefile for PDCurses library - WIN32 Cygnus GCC
+# GNU MAKE Makefile for PDCurses library - Windows console GCC
 #
-# Usage: make -f [path\]gccwin32.mak [DEBUG=Y] [DLL=Y] [WIDE=Y] [UTF8=Y] [tgt]
+# Usage: make [-f path\Makefile] [DEBUG=Y] [DLL=Y] [WIDE=Y] [UTF8=Y] [tgt]
 #
 # where tgt can be any of:
 # [all|demos|pdcurses.a|testcurs.exe...]
 
 O = o
+E = .exe
+
+ifeq ($(OS),Windows_NT)
+	RM = cmd /c del
+else
+	RM = rm -f
+endif
 
 ifndef PDCURSES_SRCDIR
 	PDCURSES_SRCDIR = ..
@@ -14,11 +21,14 @@ endif
 include $(PDCURSES_SRCDIR)/version.mif
 include $(PDCURSES_SRCDIR)/libobjs.mif
 
-osdir		= $(PDCURSES_SRCDIR)/win32
+osdir		= $(PDCURSES_SRCDIR)/wincon
 
 PDCURSES_WIN_H	= $(osdir)/pdcwin.h
 
 CC		= gcc
+AR		= ar
+STRIP		= strip
+LINK		= gcc
 
 ifeq ($(DEBUG),Y)
 	CFLAGS  = -g -Wall -DPDCDEBUG
@@ -38,17 +48,15 @@ ifeq ($(UTF8),Y)
 	CFLAGS += -DPDC_FORCE_UTF8
 endif
 
-LINK		= gcc
-
 ifeq ($(DLL),Y)
 	CFLAGS += -DPDC_DLL_BUILD
-	LIBEXE = gcc
+	LIBEXE = $(CC)
 	LIBFLAGS = -Wl,--out-implib,pdcurses.a -shared -o
 	LIBCURSES = pdcurses.dll
 	LIBDEPS = $(LIBOBJS) $(PDCOBJS)
 	CLEAN = $(LIBCURSES) *.a
 else
-	LIBEXE = ar
+	LIBEXE = $(AR)
 	LIBFLAGS = rcv
 	LIBCURSES = pdcurses.a
 	LIBDEPS = $(LIBOBJS) $(PDCOBJS)
@@ -57,23 +65,22 @@ endif
 
 .PHONY: all libs clean demos dist
 
-all:	libs demos
+all:	libs
 
 libs:	$(LIBCURSES)
 
 clean:
-	-rm -f *.o
-	-rm -f *.exe
-	-rm -f $(CLEAN)
+	-$(RM) *.o
+	-$(RM) *.exe
+	-$(RM) $(CLEAN)
 
 demos:	$(DEMOS)
 ifneq ($(DEBUG),Y)
-	strip *.exe
+	$(STRIP) *.exe
 endif
 
 $(LIBCURSES) : $(LIBDEPS)
 	$(LIBEXE) $(LIBFLAGS) $@ $?
-	-cp pdcurses.a panel.a
 
 $(LIBOBJS) $(PDCOBJS) : $(PDCURSES_HEADERS)
 $(PDCOBJS) : $(PDCURSES_WIN_H)
@@ -87,7 +94,7 @@ $(LIBOBJS) : %.o: $(srcdir)/%.c
 $(PDCOBJS) : %.o: $(osdir)/%.c
 	$(CC) -c $(CFLAGS) $<
 
-firework.exe newdemo.exe rain.exe testcurs.exe worm.exe xmas.exe \
+firework.exe ozdemo.exe rain.exe testcurs.exe worm.exe xmas.exe \
 ptest.exe: %.exe: $(demodir)/%.c
 	$(CC) $(CFLAGS) -o$@ $< $(LIBCURSES)
 
@@ -100,15 +107,8 @@ tui.o: $(demodir)/tui.c $(demodir)/tui.h $(PDCURSES_CURSES_H)
 tuidemo.o: $(demodir)/tuidemo.c $(PDCURSES_CURSES_H)
 	$(CC) -c $(CFLAGS) -I$(demodir) -o$@ $<
 
-dist: $(PDCLIBS)
-	echo PDCurses $(VERDOT) for Cygnus Win32 > file_id.diz
-	echo ------------------------------------------ >> file_id.diz
-	echo Public Domain Curses library for >> file_id.diz
-	echo Cygnus GCC for Win32. >> file_id.diz
-	echo Source available in PDCURS$(VER).ZIP >> file_id.diz
-	echo Public Domain. >> file_id.diz
-	zip -9jX pdc$(VER)_cyg_w32 \
-	$(PDCURSES_SRCDIR)/README.md $(PDCURSES_SRCDIR)/HISTORY.md \
-	$(PDCURSES_SRCDIR)/curses.h $(PDCURSES_SRCDIR)/panel.h \
-	$(LIBCURSES) $(LIBPANEL) file_id.diz
-	rm file_id.diz
+PLATFORM1 = GCC Wincon
+PLATFORM2 = GCC for Windows console
+ARCNAME = pdc$(VER)_gcc_wincon
+
+include $(PDCURSES_SRCDIR)/makedist.mif

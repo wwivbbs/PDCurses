@@ -2,6 +2,27 @@
 
 O = o
 
+ifeq ($(OS),Windows_NT)
+	E = .exe
+	CC = gcc
+	RM = cmd /c del
+
+	SFLAGS = -Ic:/sdl2-2.0.7/include
+	SLIBS = -Lc:/sdl2-2.0.7/lib/x64 -lSDL2main -lSDL2
+
+	TFLAGS = -Ic:/sdl2_ttf-2.0.14/include
+	TLIBS =-Lc:/sdl2_ttf-2.0.14/lib/x64 -lSDL2_ttf
+
+	DEMOFLAGS = -mwindows
+else
+	RM = rm -f
+
+	SFLAGS = $(shell sdl2-config --cflags)
+	SLIBS = $(shell sdl2-config --libs)
+
+	TLIBS = -lSDL2_ttf
+endif
+
 ifndef PDCURSES_SRCDIR
 	PDCURSES_SRCDIR	= ..
 endif
@@ -11,9 +32,6 @@ include $(PDCURSES_SRCDIR)/libobjs.mif
 osdir		= $(PDCURSES_SRCDIR)/sdl2
 
 PDCURSES_SDL_H	= $(osdir)/pdcsdl.h
-
-SFLAGS		= $(shell sdl2-config --cflags)
-SLIBS		= $(shell sdl2-config --libs)
 
 # If your system doesn't have these, remove the defines here
 SFLAGS		+= -DHAVE_VSNPRINTF -DHAVE_VSSCANF
@@ -25,8 +43,8 @@ else
 endif
 
 ifeq ($(WIDE),Y)
-	CFLAGS += -DPDC_WIDE
-	SLIBS  += -lSDL2_ttf
+	CFLAGS += -DPDC_WIDE $(TFLAGS)
+	SLIBS  += $(TLIBS)
 endif
 
 ifeq ($(UTF8),Y)
@@ -40,17 +58,16 @@ LDFLAGS		= $(LIBCURSES) $(SLIBS)
 RANLIB		= ranlib
 LIBCURSES	= libpdcurses.a
 
-DEMOS		= firework$(EXE_EXTENSION) newdemo$(EXE_EXTENSION) ptest$(EXE_EXTENSION) rain$(EXE_EXTENSION) testcurs$(EXE_EXTENSION) tuidemo$(EXE_EXTENSION) worm$(EXE_EXTENSION) xmas$(EXE_EXTENSION) \
-sdltest$(EXE_EXTENSION)
+DEMOS		+= sdltest$(E)
 
 .PHONY: all libs clean demos install
 
-all:	libs demos
+all:	libs
 
 libs:	$(LIBCURSES)
 
 clean:
-	-rm -rf *.o trace $(LIBCURSES) $(DEMOS)
+	-$(RM) *.o trace $(LIBCURSES) $(DEMOS)
 
 demos:	$(DEMOS)
 ifneq ($(DEBUG),Y)
@@ -66,7 +83,7 @@ $(PDCOBJS) : $(PDCURSES_SDL_H)
 $(DEMOS) : $(PDCURSES_CURSES_H) $(LIBCURSES)
 tui.o tuidemo.o : $(PDCURSES_CURSES_H)
 terminfo.o: $(TERM_HEADER)
-panel.o ptest$(EXE_EXTENSION): $(PANEL_HEADER)
+panel.o ptest$(E): $(PANEL_HEADER)
 
 $(LIBOBJS) : %.o: $(srcdir)/%.c
 	$(BUILD) $(SFLAGS) -c $<
@@ -74,31 +91,31 @@ $(LIBOBJS) : %.o: $(srcdir)/%.c
 $(PDCOBJS) : %.o: $(osdir)/%.c
 	$(BUILD) $(SFLAGS) -c $<
 
-firework$(EXE_EXTENSION): $(demodir)/firework.c
+firework$(E): $(demodir)/firework.c
 	$(BUILD) $(DEMOFLAGS) -o $@ $< $(LDFLAGS)
 
-newdemo$(EXE_EXTENSION): $(demodir)/newdemo.c
+ozdemo$(E): $(demodir)/ozdemo.c
 	$(BUILD) $(DEMOFLAGS) -o $@ $< $(LDFLAGS)
 
-ptest$(EXE_EXTENSION): $(demodir)/ptest.c
+ptest$(E): $(demodir)/ptest.c
 	$(BUILD) $(DEMOFLAGS) -o $@ $< $(LDFLAGS)
 
-rain$(EXE_EXTENSION): $(demodir)/rain.c
+rain$(E): $(demodir)/rain.c
 	$(BUILD) $(DEMOFLAGS) -o $@ $< $(LDFLAGS)
 
-testcurs$(EXE_EXTENSION): $(demodir)/testcurs.c
+testcurs$(E): $(demodir)/testcurs.c
 	$(BUILD) $(DEMOFLAGS) -o $@ $< $(LDFLAGS)
 
-tuidemo$(EXE_EXTENSION): tuidemo.o tui.o
+tuidemo$(E): tuidemo.o tui.o
 	$(LINK) tui.o tuidemo.o -o $@ $(LDFLAGS)
 
-worm$(EXE_EXTENSION): $(demodir)/worm.c
+worm$(E): $(demodir)/worm.c
 	$(BUILD) $(DEMOFLAGS) -o $@ $< $(LDFLAGS)
 
-xmas$(EXE_EXTENSION): $(demodir)/xmas.c
+xmas$(E): $(demodir)/xmas.c
 	$(BUILD) $(DEMOFLAGS) -o $@ $< $(LDFLAGS)
 
-sdltest$(EXE_EXTENSION): $(osdir)/sdltest.c
+sdltest$(E): $(osdir)/sdltest.c
 	$(BUILD) $(SFLAGS) $(DEMOFLAGS) -o $@ $< $(LDFLAGS)
 
 tui.o: $(demodir)/tui.c $(demodir)/tui.h
@@ -106,3 +123,6 @@ tui.o: $(demodir)/tui.c $(demodir)/tui.h
 
 tuidemo.o: $(demodir)/tuidemo.c
 	$(BUILD) -c $(DEMOFLAGS) $(demodir)/tuidemo.c
+
+ncurses_testdir = $(HOME)/ncurses-5.9/test
+include $(demodir)/nctests.mif

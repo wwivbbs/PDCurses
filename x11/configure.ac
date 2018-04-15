@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([PDCurses], [3.4], [wmcbrine@gmail.com], [PDCurses])
+AC_INIT([PDCurses], [3.6], [wmcbrine@gmail.com], [PDCurses])
 AC_CONFIG_SRCDIR([pdcx11.h])
 
 AC_SUBST(prefix)
@@ -13,7 +13,7 @@ AC_CANONICAL_SYSTEM([])
 
 on_qnx=no
 case "$target" in
-	*hp-hpux*) 
+	*hp-hpux*)
 		SYS_DEFS="-D_HPUX_SOURCE"
 		;;
 	*dec-osf*)
@@ -47,9 +47,12 @@ fi
 
 dnl Checks for libraries.
 
+dnl we check for dlfcn.h or dl.h so we know if we can build shared objects
 AC_CHECK_HEADERS(fcntl.h \
 	sys/time.h \
-	sys/select.h
+	sys/select.h \
+	dlfcn.h \
+	dl.h
 )
 
 dnl Checks for typedefs, structures, and compiler characteristics.
@@ -59,7 +62,6 @@ AC_SUBST(MH_EXTRA_LIBS)
 MH_CHECK_CC_O
 
 dnl Checks for library functions.
-AC_TYPE_SIGNAL
 AC_CHECK_FUNCS(vsscanf usleep poll vsnprintf)
 
 dnl Check for X includes and X libraries
@@ -67,8 +69,6 @@ AC_PATH_X
 MH_CHECK_X_INC
 MH_CHECK_X_LIB
 MH_CHECK_X_HEADERS(DECkeysym.h Sunkeysym.h xpm.h)
-MH_CHECK_X_KEYDEFS(XK_KP_Delete XK_KP_Insert XK_KP_End XK_KP_Down XK_KP_Next \
-	XK_KP_Left XK_KP_Right XK_KP_Home XK_KP_Up XK_KP_Prior XK_KP_Begin)
 MH_CHECK_X_TYPEDEF(XPointer)
 dnl
 dnl extra for xpm library
@@ -122,9 +122,12 @@ AC_ARG_ENABLE(widec,
 	[with_widec=$enableval],
 	[with_widec=no],
 )
+PDC_WIDE=""
 if test "$with_widec" = yes; then
-	SYS_DEFS="$SYS_DEFS -DPDC_WIDE"
+	PDC_WIDE="-DPDC_WIDE"
+	SYS_DEFS="$SYS_DEFS $PDC_WIDE"
 fi
+AC_SUBST(PDC_WIDE)
 
 dnl -------------------- check for XIM support -----------------------
 dnl allow --enable-xim to include XIM support
@@ -209,50 +212,6 @@ AC_DEFINE([HAVE_SUNKEYSYM_H], [],
 
 AC_DEFINE([HAVE_XPM_H], [],
 	[Define if you have the <xpm.h> header file]
-)
-
-AC_DEFINE([HAVE_XK_KP_DELETE], [],
-	[Define if you have this defined in <keysym.h>]
-)
-
-AC_DEFINE([HAVE_XK_KP_INSERT], [],
-	[Define if you have this defined in <keysym.h>]
-)
-
-AC_DEFINE([HAVE_XK_KP_END], [],
-	[Define if you have this defined in <keysym.h>]
-)
-
-AC_DEFINE([HAVE_XK_KP_DOWN], [],
-	[Define if you have this defined in <keysym.h>]
-)
-
-AC_DEFINE([HAVE_XK_KP_NEXT], [],
-	[Define if you have this defined in <keysym.h>]
-)
-
-AC_DEFINE([HAVE_XK_KP_LEFT], [],
-	[Define if you have this defined in <keysym.h>]
-)
-
-AC_DEFINE([HAVE_XK_KP_RIGHT], [],
-	[Define if you have this defined in <keysym.h>]
-)
-
-AC_DEFINE([HAVE_XK_KP_HOME], [],
-	[Define if you have this defined in <keysym.h>]
-)
-
-AC_DEFINE([HAVE_XK_KP_UP], [],
-	[Define if you have this defined in <keysym.h>]
-)
-
-AC_DEFINE([HAVE_XK_KP_PRIOR], [],
-	[Define if you have this defined in <keysym.h>]
-)
-
-AC_DEFINE([HAVE_XK_KP_BEGIN], [],
-	[Define if you have this defined in <keysym.h>]
 )
 
 AC_DEFINE([USE_XAW3D], [],

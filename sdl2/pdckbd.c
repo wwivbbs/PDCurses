@@ -22,6 +22,7 @@ pdckbd
 
 **man-end****************************************************************/
 
+#include <ctype.h>
 #include <string.h>
 
 unsigned long pdc_key_modifiers = 0L;
@@ -409,6 +410,10 @@ int PDC_get_key(void)
                 pdc_sheight = event.window.data2;
                 pdc_swidth = event.window.data1;
 
+                pdc_screen = SDL_GetWindowSurface(pdc_window);
+                touchwin(curscr);
+                wrefresh(curscr);
+
                 if (!SP->resized)
                 {
                     SP->resized = TRUE;
@@ -437,6 +442,8 @@ int PDC_get_key(void)
     case SDL_TEXTINPUT:
         PDC_mouse_set();
         return _process_key_event();
+    case SDL_USEREVENT:
+        PDC_blink_text();
     }
 
     return -1;

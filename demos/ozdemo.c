@@ -1,11 +1,10 @@
 /*
- *  newdemo.c   -   A demo program using PDCurses. The program 
- *          illustrates the use of colors for text output.
+ *  ozdemo.c           - A demo program using PDCurses. The program
+ *  (formerly newdemo)   illustrates the use of colors for text output.
  *
  *  Hacks by jbuhler@cs.washington.edu on 12/29/96
  */
 
-#include <stdio.h>
 #include <signal.h>
 #include <string.h>
 #include <curses.h>
@@ -328,7 +327,7 @@ int main(int argc, char **argv)
         init_pair(5, COLOR_BLUE, COLOR_WHITE);
         wattrset(win, COLOR_PAIR(5) | A_BLINK);
         mvwaddstr(win, height - 2, 2,
-            " PDCurses 3.4 - DOS, OS/2, Windows, X11, SDL");
+            " PDCurses 3.6 - DOS, OS/2, Windows, X11, SDL");
         wrefresh(win);
 
         /* Draw running messages */

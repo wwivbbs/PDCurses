@@ -95,7 +95,7 @@ initscr
 
 char ttytype[128];
 
-const char *_curses_notice = "PDCurses 3.4 - Public Domain 2008";
+const char *_curses_notice = "PDCurses 3.6 - Public Domain 2018";
 
 SCREEN *SP = (SCREEN*)NULL;           /* curses variables */
 WINDOW *curscr = (WINDOW *)NULL;      /* the current screen image */
@@ -154,13 +154,15 @@ WINDOW *Xinitscr(int argc, char *argv[])
         exit(4);
     }
 
-    if ((curscr = newwin(LINES, COLS, 0, 0)) == (WINDOW *)NULL)
+    curscr = newwin(LINES, COLS, 0, 0);
+    if (!curscr)
     {
         fprintf(stderr, "initscr(): Unable to create curscr.\n");
         exit(2);
     }
 
-    if ((pdc_lastscr = newwin(LINES, COLS, 0, 0)) == (WINDOW *)NULL)
+    pdc_lastscr = newwin(LINES, COLS, 0, 0);
+    if (!pdc_lastscr)
     {
         fprintf(stderr, "initscr(): Unable to create pdc_lastscr.\n");
         exit(2);
@@ -189,7 +191,8 @@ WINDOW *Xinitscr(int argc, char *argv[])
 
     linesrippedoff = 0;
 
-    if (!(stdscr = newwin(LINES, COLS, SP->linesrippedoffontop, 0)))
+    stdscr = newwin(LINES, COLS, SP->linesrippedoffontop, 0);
+    if (!stdscr)
     {
         fprintf(stderr, "initscr(): Unable to create stdscr.\n");
         exit(1);
@@ -288,7 +291,7 @@ void delscreen(SCREEN *sp)
 
     SP->alive = FALSE;
 
-    PDC_scr_free();     /* free SP and pdc_atrtab */
+    PDC_scr_free();     /* free SP */
 
     SP = (SCREEN *)NULL;
 }

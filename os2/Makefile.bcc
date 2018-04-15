@@ -1,14 +1,13 @@
-# Borland MAKE Makefile for PDCurses library - DOS BC++ 3.0+
+# Borland MAKE Makefile for PDCurses library - OS/2 BC++ 2.0+
 #
-# Usage: make -f [path\]bccdos.mak [DEBUG=] [target]
+# Usage: make -f [path\]Makefile.bcc [DEBUG=] [target]
 #
 # where target can be any of:
 # [all|demos|pdcurses.lib|testcurs.exe...]
 
-# Change the memory MODEL here, if desired
-MODEL = l
-
 O = obj
+E = .exe
+RM = del
 
 !ifndef PDCURSES_SRCDIR
 PDCURSES_SRCDIR = ..
@@ -17,37 +16,39 @@ PDCURSES_SRCDIR = ..
 !include $(PDCURSES_SRCDIR)\version.mif
 !include $(PDCURSES_SRCDIR)\libobjs.mif
 
-osdir		= $(PDCURSES_SRCDIR)\dos
+osdir		= $(PDCURSES_SRCDIR)\os2
+
+CC		= bcc
 
 !ifdef DEBUG
-CFLAGS		= -N -v -y -DPDCDEBUG 
+CFLAGS		= -N -v -y -DPDCDEBUG
 !else
-CFLAGS		= -O 
+CFLAGS		= -O
 !endif
 
 CPPFLAGS	= -I$(PDCURSES_SRCDIR)
 
-BUILD		= $(CC) -1- -K -G -rd -d -w-eff -w-par -c \
--m$(MODEL) $(CFLAGS) $(CPPFLAGS)
+BUILD		= $(CC) -c $(CFLAGS) $(CPPFLAGS)
+
+LINK		= tlink
 
 LIBEXE		= tlib /C /E
 
 LIBCURSES	= pdcurses.lib
 
-all:	$(LIBCURSES) $(DEMOS)
+all:	$(LIBCURSES)
 
 clean:
-	-del *.obj
-	-del *.lib
-	-del *.map
-	-del *.exe
+	-$(RM) *.obj
+	-$(RM) *.lib
+        -$(RM) *.map
+	-$(RM) *.exe
 
 demos:	$(DEMOS)
 
 $(LIBCURSES) : $(LIBOBJS) $(PDCOBJS)
-	-del $@
-	$(LIBEXE) $@ @$(osdir)\bccdos.lrf
-	-copy $(LIBCURSES) panel.lib
+	-$(RM) $@
+	$(LIBEXE) $@ @$(PDCURSES_SRCDIR)\borland.lrf
 
 .autodepend
 
@@ -64,10 +65,10 @@ $(LIBCURSES) : $(LIBOBJS) $(PDCOBJS)
 	$(BUILD) $<
 
 .obj.exe:
-	$(CC) -m$(MODEL) -e$@ $** $(LIBCURSES)
+	$(CC) -e$@ $** $(LIBCURSES)
 
 tuidemo.exe:	tuidemo.obj tui.obj $(LIBCURSES)
-	$(CC) -m$(MODEL) -e$@ $**
+	$(CC) -e$@ $**
 
 tui.obj: $(demodir)\tui.c $(demodir)\tui.h $(PDCURSES_CURSES_H)
 	$(BUILD) -I$(demodir) $(demodir)\tui.c
@@ -75,8 +76,8 @@ tui.obj: $(demodir)\tui.c $(demodir)\tui.h $(PDCURSES_CURSES_H)
 tuidemo.obj: $(demodir)\tuidemo.c $(PDCURSES_CURSES_H)
 	$(BUILD) -I$(demodir) $(demodir)\tuidemo.c
 
-PLATFORM1 = Borland C++ 3.1
-PLATFORM2 = Borland C/C++ 3.1 for DOS
-ARCNAME = pdc$(VER)bcc
+PLATFORM1 = Borland C++ OS/2 2.0
+PLATFORM2 = Borland C/C++ OS/2 2.0
+ARCNAME = pdc$(VER)bcos2
 
 !include $(PDCURSES_SRCDIR)\makedist.mif

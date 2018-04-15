@@ -1,14 +1,13 @@
 # GNU MAKE Makefile for PDCurses library - OS/2 emx 0.9c+
 #
-# Usage: make -f [path\]gccos2.mak [DEBUG=Y] [EMXVIDEO=Y] [target]
+# Usage: make [-f path\Makefile] [DEBUG=Y] [target]
 #
 # where target can be any of:
 # [all|demos|pdcurses.a|testcurs.exe...]
-#
-# The EMXVIDEO option compiles with the emx video library, which
-# enables a PDCurses program to run under OS/2 and DOS.
 
 O = o
+E = .exe
+RM = del
 
 ifndef PDCURSES_SRCDIR
 	PDCURSES_SRCDIR = ..
@@ -25,15 +24,6 @@ CC		= gcc
 
 CFLAGS = -I$(PDCURSES_SRCDIR) -c -Wall
 
-ifeq ($(EMXVIDEO),Y)
-	CFLAGS += -DEMXVIDEO
-	CCLIBS = -lvideo
-	BINDFLAGS = -acm
-else
-	CCLIBS =
-	BINDFLAGS = 
-endif
-
 ifeq ($(DEBUG),Y)
 	CFLAGS  += -g -DPDCDEBUG
 	LDFLAGS = -g
@@ -43,7 +33,7 @@ else
 endif
 
 LINK		= gcc
-EMXBIND		= emxbind 
+EMXBIND		= emxbind
 EMXOMF		= emxomf
 
 LIBEXE		= ar
@@ -52,29 +42,28 @@ LIBFLAGS	= rcv
 LIBCURSES = pdcurses.a
 LIBDEPS = $(LIBOBJS) $(PDCOBJS)
 PDCLIBS = $(LIBCURSES)
-EXEPOST = $(EMXBIND) $* $(BINDFLAGS)
-TUIPOST = $(EMXBIND) tuidemo $(BINDFLAGS)
-CLEAN = *.a testcurs newdemo xmas tuidemo firework ptest rain worm
+EXEPOST = $(EMXBIND) $*
+TUIPOST = $(EMXBIND) tuidemo
+CLEAN = *.a testcurs ozdemo xmas tuidemo firework ptest rain worm
 
 .PHONY: all libs clean demos dist
 
-all:	libs demos
+all:	libs
 
 libs:	$(PDCLIBS)
 
 clean:
-	-del *.o
-	-del *.exe
-	-del $(CLEAN)
+	-$(RM) *.o
+	-$(RM) *.exe
+	-$(RM) $(CLEAN)
 
 demos:	$(DEMOS)
 
-DEMOOBJS = testcurs.o newdemo.o xmas.o tui.o tuidemo.o firework.o \
+DEMOOBJS = testcurs.o ozdemo.o xmas.o tui.o tuidemo.o firework.o \
 ptest.o rain.o worm.o
 
 $(LIBCURSES) : $(LIBDEPS)
 	$(LIBEXE) $(LIBFLAGS) $@ $?
-	-copy $(LIBCURSES) panel.a
 
 $(LIBOBJS) $(PDCOBJS) $(DEMOOBJS) : $(PDCURSES_HEADERS)
 $(PDCOBJS) : $(PDCURSES_OS2_H)
@@ -88,16 +77,16 @@ $(LIBOBJS) : %.o: $(srcdir)/%.c
 $(PDCOBJS) : %.o: $(osdir)/%.c
 	$(CC) -c $(CFLAGS) -o$@ $<
 
-firework.exe newdemo.exe rain.exe testcurs.exe worm.exe xmas.exe \
+firework.exe ozdemo.exe rain.exe testcurs.exe worm.exe xmas.exe \
 ptest.exe: %.exe: %.o
-	$(LINK) $(LDFLAGS) -o $* $< $(LIBCURSES) $(CCLIBS)
+	$(LINK) $(LDFLAGS) -o $* $< $(LIBCURSES)
 	$(EXEPOST)
 
 tuidemo.exe:	tuidemo.o tui.o
-	$(LINK) $(LDFLAGS) -o tuidemo tuidemo.o tui.o $(LIBCURSES) $(CCLIBS)
+	$(LINK) $(LDFLAGS) -o tuidemo tuidemo.o tui.o $(LIBCURSES)
 	$(TUIPOST)
 
-firework.o newdemo.o ptest.o rain.o testcurs.o worm.o xmas.o: %.o: \
+firework.o ozdemo.o ptest.o rain.o testcurs.o worm.o xmas.o: %.o: \
 $(demodir)/%.c
 	$(CC) $(CFLAGS) -o$@ $<
 

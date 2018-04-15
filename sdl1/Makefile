@@ -44,12 +44,11 @@ LDFLAGS		= $(LIBCURSES) $(SLIBS)
 RANLIB		= ranlib
 LIBCURSES	= libpdcurses.a
 
-DEMOS		= firework newdemo ptest rain testcurs tuidemo worm xmas \
-sdltest
+DEMOS		+= sdltest
 
 .PHONY: all libs clean demos
 
-all:	libs demos
+all:	libs
 
 libs:	$(LIBCURSES)
 
@@ -81,7 +80,7 @@ $(PDCOBJS) : %.o: $(osdir)/%.c
 firework: $(demodir)/firework.c
 	$(BUILD) $(DEMOFLAGS) -o $@ $< $(LDFLAGS)
 
-newdemo: $(demodir)/newdemo.c
+ozdemo: $(demodir)/ozdemo.c
 	$(BUILD) $(DEMOFLAGS) -o $@ $< $(LDFLAGS)
 
 ptest: $(demodir)/ptest.c
@@ -110,3 +109,6 @@ tui.o: $(demodir)/tui.c $(demodir)/tui.h
 
 tuidemo.o: $(demodir)/tuidemo.c
 	$(BUILD) -c $(DEMOFLAGS) $(demodir)/tuidemo.c
+
+ncurses_testdir = $(HOME)/ncurses-5.9/test
+include $(demodir)/nctests.mif

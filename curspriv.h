@@ -10,8 +10,7 @@
 #include <curses.h>
 
 #if defined(__TURBOC__) || defined(__EMX__) || defined(__DJGPP__) || \
-    defined(__CYGWIN__) || defined(__MINGW32__) || \
-    defined(__WATCOMC__) || defined(__PACIFIC__)
+    defined(__CYGWIN__) || defined(__MINGW32__) || defined(__WATCOMC__)
 # ifndef HAVE_VSSCANF
 #  define HAVE_VSSCANF       /* have vsscanf() */
 # endif
@@ -21,10 +20,6 @@
 # ifndef HAVE_VSNPRINTF
 #  define HAVE_VSNPRINTF     /* have vsnprintf() */
 # endif
-#endif
-
-#if defined(_MSC_VER) && defined(_WIN32) && !defined(_CRT_SECURE_NO_DEPRECATE)
-# define _CRT_SECURE_NO_DEPRECATE 1   /* kill nonsense warnings */
 #endif
 
 /*----------------------------------------------------------------------*/
@@ -50,7 +45,7 @@ typedef struct           /* structure for ripped off lines */
 #define _DLCHAR    0x15  /* Delete Line char (^U) */
 
 extern WINDOW *pdc_lastscr;
-extern bool pdc_trace_on;   /* tracing flag */
+extern FILE *pdc_dbfp;   /* tracing file pointer (NULL = off) */
 extern bool pdc_color_started;
 extern unsigned long pdc_key_modifiers;
 extern MOUSE_STATUS pdc_mouse_status;
@@ -105,7 +100,7 @@ size_t  PDC_wcstombs(char *, const wchar_t *, size_t);
 #endif
 
 #ifdef PDCDEBUG
-# define PDC_LOG(x) if (pdc_trace_on) PDC_debug x
+# define PDC_LOG(x) if (pdc_dbfp) PDC_debug x
 #else
 # define PDC_LOG(x)
 #endif

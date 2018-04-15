@@ -1,11 +1,13 @@
-# Visual C++ NMakefile for PDCurses library - Win32 VC++ 2.0+
+# Visual C++ NMakefile for PDCurses library - Windows console VC++ 2.0+
 #
-# Usage: nmake -f [path\]vcwin32.mak [DEBUG=] [DLL=] [WIDE=] [UTF8=] [target]
+# Usage: nmake -f [path\]Makefile.vc [DEBUG=] [DLL=] [WIDE=] [UTF8=] [target]
 #
 # where target can be any of:
 # [all|demos|pdcurses.lib|testcurs.exe...]
 
 O = obj
+E = .exe
+RM = del
 
 !ifndef PDCURSES_SRCDIR
 PDCURSES_SRCDIR = ..
@@ -14,7 +16,7 @@ PDCURSES_SRCDIR = ..
 !include $(PDCURSES_SRCDIR)\version.mif
 !include $(PDCURSES_SRCDIR)\libobjs.mif
 
-osdir		= $(PDCURSES_SRCDIR)\win32
+osdir		= $(PDCURSES_SRCDIR)\wincon
 
 PDCURSES_WIN_H	= $(osdir)\pdcwin.h
 
@@ -36,7 +38,7 @@ WIDEOPT		= -DPDC_WIDE
 UTF8OPT		= -DPDC_FORCE_UTF8
 !endif
 
-SHL_LD = link $(LDFLAGS) /NOLOGO /DLL /OUT:pdcurses.dll
+SHL_LD = link $(LDFLAGS) /NOLOGO /DLL /MACHINE:$(PLATFORM) /OUT:pdcurses.dll
 
 LINK		= link.exe -nologo
 
@@ -59,15 +61,17 @@ PDCLIBS		= $(LIBCURSES)
 BUILD		= $(CC) -I$(PDCURSES_SRCDIR) -c $(CFLAGS) $(DLLOPT) \
 $(WIDEOPT) $(UTF8OPT)
 
-all:	$(PDCLIBS) $(DEMOS)
+all:	$(PDCLIBS)
 
 clean:
-	-del *.obj
-	-del *.lib
-	-del *.exe
-	-del *.dll
-	-del *.exp
-	-del *.res
+	-$(RM) *.obj
+	-$(RM) *.lib
+	-$(RM) *.exe
+	-$(RM) *.dll
+	-$(RM) *.exp
+	-$(RM) *.res
+
+demos:	$(DEMOS)
 
 DEMOOBJS = $(DEMOS:.exe=.obj) tui.obj
 
@@ -81,16 +85,14 @@ terminfo.obj: $(TERM_HEADER)
 !ifndef DLL
 $(LIBCURSES) : $(LIBOBJS) $(PDCOBJS)
 	$(LIBEXE) -out:$@ $(LIBOBJS) $(PDCOBJS)
-	-copy $(LIBCURSES) panel.lib
 !endif
 
 $(CURSESDLL) : $(LIBOBJS) $(PDCOBJS) pdcurses.obj
 	$(SHL_LD) $(LIBOBJS) $(PDCOBJS) pdcurses.obj $(CCLIBS)
-	-copy $(LIBCURSES) panel.lib
 
 pdcurses.res pdcurses.obj: $(osdir)\pdcurses.rc $(osdir)\pdcurses.ico
 	rc /r /fopdcurses.res $(osdir)\pdcurses.rc
-	cvtres /NOLOGO /OUT:pdcurses.obj pdcurses.res
+	cvtres /MACHINE:$(PLATFORM) /NOLOGO /OUT:pdcurses.obj pdcurses.res
 
 {$(srcdir)\}.c{}.obj::
 	$(BUILD) $<
@@ -114,7 +116,7 @@ tuidemo.obj: $(demodir)\tuidemo.c
 	$(BUILD) -I$(demodir) $(demodir)\tuidemo.c
 
 PLATFORM1 = Visual C++
-PLATFORM2 = Microsoft Visual C/C++ for Win32
-ARCNAME = pdc$(VER)_vc_w32
+PLATFORM2 = Microsoft Visual C/C++ for Windows console
+ARCNAME = pdc$(VER)_vc_wincon
 
 !include $(PDCURSES_SRCDIR)\makedist.mif

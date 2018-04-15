@@ -9,10 +9,9 @@ Building
 
 - Choose the appropriate makefile for your compiler:
 
-        bccos2.mak - Borland C++ 2.0+
-        gccos2.mak - EMX 0.9b+
-        iccos2.mak - C Set/2
-        wccos2.mak - Open Watcom 1.8+
+        Makefile     - EMX 0.9b+
+        Makefile.bcc - Borland C++ 2.0+
+        Makefile.wcc - Open Watcom 1.8+
 
 - Optionally, you can build in a different directory than the platform
   directory by setting PDCURSES_SRCDIR to point to the directory where
@@ -24,12 +23,9 @@ Building
 
         make -f makefilename
 
-  (For Watcom, use "wmake" instead of "make"; for MSVC or C Set/2,
-  "nmake".) You'll get the libraries (pdcurses.lib or .a, depending on
-  your compiler; and panel.lib or .a), the demos (*.exe), and a lot of
-  object files. Note that the panel library is just a copy of the main
-  library, provided for convenience; both panel and curses functions are
-  in the main library.
+  (For Watcom, use "wmake" instead of "make".) You'll get the libraries
+  (pdcurses.lib or .a, depending on your compiler), the demos (*.exe),
+  and a lot of object files.
 
 
 Distribution Status

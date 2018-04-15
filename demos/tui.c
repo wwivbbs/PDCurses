@@ -611,7 +611,7 @@ static void repainteditbox(WINDOW *win, int x, char *buf)
     NOTE: editstr(), mveditstr(), and mvweditstr() are macros.
 
   Return Value:
-    Returns the input terminating character on success (Escape, 
+    Returns the input terminating character on success (Escape,
     Enter, Up or Down Arrow) and ERR on error.
 
   Errors:
@@ -640,7 +640,7 @@ int weditstr(WINDOW *win, char *buf, int field)
     getbegyx(win, begy, begx);
 
     wedit = subwin(win, 1, field, begy + cury, begx + curx);
-    oldattr = wedit->_attrs;
+    oldattr = getattrs(wedit);
     colorbox(wedit, EDITBOXCOLOR, 0);
 
     keypad(wedit, TRUE);
