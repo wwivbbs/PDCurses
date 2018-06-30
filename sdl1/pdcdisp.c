@@ -200,15 +200,14 @@ void PDC_gotoyx(int row, int col)
 #ifdef PDC_WIDE
     chstr[0] = ch & A_CHARTEXT;
 
-    pdc_font = TTF_RenderUNICODE_Solid(pdc_ttffont, chstr, pdc_color[foregr]);
+    pdc_font = TTF_RenderUNICODE_Blended(pdc_ttffont, chstr, pdc_color[foregr]);
     if (pdc_font)
     {
         dest.h = src.h;
         dest.w = src.w;
         src.x = 0;
         src.y = 0;
-        SDL_SetColorKey(pdc_font, 0, 0);
-        SDL_SetPalette(pdc_font, SDL_LOGPAL, pdc_color + backgr, 0, 1);
+        SDL_FillRect(pdc_screen, &dest, pdc_mapped[backgr]);
         SDL_BlitSurface(pdc_font, &src, pdc_screen, &dest);
         SDL_FreeSurface(pdc_font);
         pdc_font = NULL;
@@ -248,15 +247,12 @@ static void _highlight(SDL_Rect *src, SDL_Rect *dest, chtype ch)
         if (col == -1)
             col = foregr;
 
-        pdc_font = TTF_RenderUNICODE_Solid(pdc_ttffont, chstr, pdc_color[col]);
+        pdc_font = TTF_RenderUNICODE_Blended(pdc_ttffont, chstr,
+                                             pdc_color[col]);
         if (pdc_font)
         {
            src->x = 0;
            src->y = 0;
-
-           if (backgr != -1)
-               SDL_SetColorKey(pdc_font, SDL_SRCCOLORKEY, 0);
-
            SDL_BlitSurface(pdc_font, src, pdc_screen, dest);
            SDL_FreeSurface(pdc_font);
            pdc_font = NULL;
@@ -304,10 +300,7 @@ static void _highlight(SDL_Rect *src, SDL_Rect *dest, chtype ch)
     }
 }
 
-/* update the given physical line to look like the corresponding line in
-   curscr */
-
-void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
+void _new_packet(attr_t attr, int lineno, int x, int len, const chtype *srcp)
 {
     SDL_Rect src, dest, lastrect;
     int j;
@@ -315,12 +308,15 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
     Uint16 chstr[2] = {0, 0};
 #endif
     attr_t sysattrs = SP->termattrs;
-
-    PDC_LOG(("PDC_transform_line() - called: lineno=%d\n", lineno));
+    bool blink = blinked_off && (attr & A_BLINK) && (sysattrs & A_BLINK);
 
     if (rectcount == MAXRECT)
         PDC_update_rects();
 
+#ifdef PDC_WIDE
+    src.x = 0;
+    src.y = 0;
+#endif
     src.h = pdc_fheight;
     src.w = pdc_fwidth;
 
@@ -347,52 +343,53 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
     else
         uprect[rectcount++] = dest;
 
-    dest.w = pdc_fwidth;
+    _set_attr(attr);
 
+    if (backgr == -1)
+        SDL_LowerBlit(pdc_tileback, &dest, pdc_screen, &dest);
 #ifdef PDC_WIDE
-    src.x = 0;
-    src.y = 0;
+    else
+        SDL_FillRect(pdc_screen, &dest, pdc_mapped[backgr]);
+
+    TTF_SetFontStyle(pdc_ttffont,
+        ( ((attr & A_BOLD) && (sysattrs & A_BOLD)) ?
+          TTF_STYLE_BOLD : 0) |
+        ( ((attr & A_ITALIC) && (sysattrs & A_ITALIC)) ?
+          TTF_STYLE_ITALIC : 0) );
 #endif
+
+    dest.w = pdc_fwidth;
 
     for (j = 0; j < len; j++)
     {
         chtype ch = srcp[j];
 
-        _set_attr(ch);
-
-        if (blinked_off && (ch & A_BLINK) && (sysattrs & A_BLINK))
-            ch = (ch & A_ATTRIBUTES) | ' ';
+        if (blink)
+            ch = ' ';
 
 #ifdef CHTYPE_LONG
         if (ch & A_ALTCHARSET && !(ch & 0xff80))
-            ch = (ch & (A_ATTRIBUTES ^ A_ALTCHARSET)) | acs_map[ch & 0x7f];
+            ch = acs_map[ch & 0x7f];
 #endif
-        if (backgr == -1)
-            SDL_LowerBlit(pdc_tileback, &dest, pdc_screen, &dest);
 
 #ifdef PDC_WIDE
-        chstr[0] = ch & A_CHARTEXT;
+        ch &= A_CHARTEXT;
 
-        TTF_SetFontStyle(pdc_ttffont,
-            ( ((ch & A_BOLD) && (sysattrs & A_BOLD)) ?
-              TTF_STYLE_BOLD : 0) |
-            ( ((ch & A_ITALIC) && (sysattrs & A_ITALIC)) ?
-              TTF_STYLE_ITALIC : 0) );
-
-        pdc_font = TTF_RenderUNICODE_Solid(pdc_ttffont, chstr,
-                                           pdc_color[foregr]);
-
-        if (pdc_font)
+        if (ch != ' ')
         {
-            if (backgr != -1)
+            if (chstr[0] != ch)
             {
-                SDL_SetColorKey(pdc_font, 0, 0);
-                SDL_SetPalette(pdc_font, SDL_LOGPAL,
-                               pdc_color + backgr, 0, 1);
+                chstr[0] = ch;
+
+                if (pdc_font)
+                    SDL_FreeSurface(pdc_font);
+
+                pdc_font = TTF_RenderUNICODE_Blended(pdc_ttffont, chstr,
+                                                     pdc_color[foregr]);
             }
-            SDL_BlitSurface(pdc_font, &src, pdc_screen, &dest);
-            SDL_FreeSurface(pdc_font);
-            pdc_font = NULL;
+
+            if (pdc_font)
+                SDL_BlitSurface(pdc_font, &src, pdc_screen, &dest);
         }
 #else
         src.x = (ch & 0xff) % 32 * pdc_fwidth;
@@ -401,12 +398,48 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
         SDL_LowerBlit(pdc_font, &src, pdc_screen, &dest);
 #endif
 
-        if (!(blinked_off && (ch & A_BLINK) && (sysattrs & A_BLINK)) &&
-            (ch & (A_UNDERLINE | A_LEFT | A_RIGHT)))
-            _highlight(&src, &dest, ch);
+        if (!blink && (attr & (A_UNDERLINE | A_LEFT | A_RIGHT)))
+            _highlight(&src, &dest, attr);
 
         dest.x += pdc_fwidth;
     }
+
+#ifdef PDC_WIDE
+    if (pdc_font)
+    {
+        SDL_FreeSurface(pdc_font);
+        pdc_font = NULL;
+    }
+#endif
+}
+
+/* update the given physical line to look like the corresponding line in
+   curscr */
+
+void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
+{
+    attr_t old_attr, attr;
+    int i, j;
+
+    PDC_LOG(("PDC_transform_line() - called: lineno=%d\n", lineno));
+
+    old_attr = *srcp & (A_ATTRIBUTES ^ A_ALTCHARSET);
+
+    for (i = 1, j = 1; j < len; i++, j++)
+    {
+        attr = srcp[i] & (A_ATTRIBUTES ^ A_ALTCHARSET);
+
+        if (attr != old_attr)
+        {
+            _new_packet(old_attr, lineno, x, i, srcp);
+            old_attr = attr;
+            srcp += i;
+            x += i;
+            i = 0;
+        }
+    }
+
+    _new_packet(old_attr, lineno, x, i, srcp);
 }
 
 static Uint32 _blink_timer(Uint32 interval, void *param)
