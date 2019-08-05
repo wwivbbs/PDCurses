@@ -1,4 +1,4 @@
-/* Public Domain Curses */
+/* PDCurses */
 
 #if defined(__EMX__) || defined(__WATCOMC__) || defined(__IBMC__) || \
 defined(__TURBOC__)
@@ -19,11 +19,11 @@ pdckbd
 
 ### Description
 
-   PDC_get_input_fd() returns the file descriptor that PDCurses
-   reads its input from. It can be used for select().
+   PDC_get_input_fd() returns the file descriptor that PDCurses reads
+   its input from. It can be used for select().
 
 ### Portability
-                             X/Open    BSD    SYS V
+                             X/Open  ncurses  NetBSD
     PDC_get_input_fd            -       -       -
 
 **man-end****************************************************************/
@@ -418,15 +418,24 @@ void PDC_flushinp(void)
     KbdFlushBuffer(0);
 }
 
+bool PDC_has_mouse(void)
+{
+    if (!mouse_handle)
+    {
+        memset(&old_mouse_status, 0, sizeof(MOUSE_STATUS));
+        MouOpen(NULL, &mouse_handle);
+    }
+
+    return !!mouse_handle;
+}
+
 int PDC_mouse_set(void)
 {
     unsigned long mbe = SP->_trap_mbe;
 
     if (mbe && !mouse_handle)
     {
-        memset(&old_mouse_status, 0, sizeof(MOUSE_STATUS));
-        MouOpen(NULL, &mouse_handle);
-        if (mouse_handle)
+        if (PDC_has_mouse())
             MouDrawPtr(mouse_handle);
     }
     else if (!mbe && mouse_handle)

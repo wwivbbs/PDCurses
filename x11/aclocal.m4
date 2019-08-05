@@ -135,18 +135,25 @@ case "$target" in
 esac
 
 if test "$with_xaw3d" = yes; then
-	MH_X11_LIBS="Xaw3d Xmu Xt X11"
+	MH_X11_LIBS="Xaw3d Xmu Xt X11 Xpm"
 else
 	if test "$with_nextaw" = yes; then
-		MH_X11_LIBS="neXtaw Xmu Xt X11"
+		MH_X11_LIBS="neXtaw Xmu Xt X11 Xpm"
 	else
-		MH_X11_LIBS="Xaw Xmu Xt X11"
+		MH_X11_LIBS="Xaw Xmu Xt X11 Xpm"
 	fi
 fi
 MH_X11R6_LIBS="SM ICE Xext"
 mh_x11r6=no
 
-mh_lib_dirs="$x_libraries `echo "$ac_x_includes $ac_x_header_dirs" | sed s/include/lib/g`"
+which dpkg-architecture > /dev/null
+if test $? -eq 0; then
+    multiarch_libdir="/usr/lib/`dpkg-architecture -qDEB_HOST_MULTIARCH`"
+else
+    multiarch_libdir=""
+fi
+
+mh_lib_dirs="$multiarch_libdir /usr/lib64 /usr/lib/x86_64-linux-gnu /usr/lib/i386-linux-gnu $x_libraries `echo "$ac_x_includes $ac_x_header_dirs" | sed s/include/lib/g`"
 
 dnl try to find libSM.[a,sl,so,dylib]. If we find it we are using X11R6
 for ac_dir in $mh_lib_dirs ; do
@@ -405,7 +412,7 @@ case "$target" in
 		;;
 	*darwin*)
 		DYN_COMP="-fno-common"
-		LD_RXLIB1="${CC} -flat_namespace -undefined suppress -dynamiclib -install_name=\$(@)"
+		LD_RXLIB1="${CC} -flat_namespace -undefined suppress -dynamiclib"
 		;;
 	*)
 		;;

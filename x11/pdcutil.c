@@ -1,10 +1,12 @@
-/* Public Domain Curses */
+/* PDCurses */
 
 #include "pdcx11.h"
 
 #if defined(HAVE_POLL) && !defined(HAVE_USLEEP)
 # include <poll.h>
 #endif
+
+bool pdc_dirty = FALSE;
 
 void PDC_beep(void)
 {
@@ -16,6 +18,12 @@ void PDC_beep(void)
 void PDC_napms(int ms)
 {
     PDC_LOG(("PDC_napms() - called: ms=%d\n", ms));
+
+    if (pdc_dirty)
+    {
+        pdc_dirty = FALSE;
+        XCursesInstruct(CURSES_DISPLAY_ALL);
+    }
 
 #if defined(HAVE_USLEEP)
 

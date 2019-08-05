@@ -1,4 +1,4 @@
-/* Public Domain Curses */
+/* PDCurses */
 
 #ifdef HAVE_CONFIG_H
 # include "config.h"
@@ -101,10 +101,7 @@ typedef struct
     XFontStruct *italicFont;
     XFontStruct *boldFont;
     char *bitmap;
-#ifdef HAVE_XPM_H
     char *pixmap;
-#endif
-    char *composeKey;
     Cursor pointer;
     int shmmin;
     int borderWidth;
@@ -186,7 +183,9 @@ enum
     CURSES_GET_SELECTION, CURSES_TITLE, CURSES_REFRESH_SCROLLBAR,
     CURSES_RESIZE, CURSES_BELL, CURSES_CONTINUE, CURSES_CURSOR,
     CURSES_CHILD, CURSES_REFRESH, CURSES_GET_COLOR, CURSES_SET_COLOR,
-    CURSES_BLINK_ON, CURSES_BLINK_OFF, CURSES_EXIT
+    CURSES_BLINK_ON, CURSES_BLINK_OFF, CURSES_DISPLAY_ALL, CURSES_EXIT
 };
 
 extern short *xc_atrtab;
+
+extern bool pdc_dirty;

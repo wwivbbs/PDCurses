@@ -1,4 +1,4 @@
-/* Public Domain Curses */
+/* PDCurses */
 
 #include "pdcx11.h"
 
@@ -143,6 +143,8 @@ int PDC_init_color(short color, short red, short green, short blue)
     tmp->blue = ((double)blue * 65535 / 1000) + 0.5;
 
     XCursesInstructAndWait(CURSES_SET_COLOR);
+
+    pdc_dirty = TRUE;
 
     return OK;
 }

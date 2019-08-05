@@ -1,4 +1,4 @@
-/* Public Domain Curses */
+/* PDCurses */
 
 #include "pdcsdl.h"
 
@@ -13,11 +13,11 @@ pdckbd
 
 ### Description
 
-   PDC_get_input_fd() returns the file descriptor that PDCurses
-   reads its input from. It can be used for select().
+   PDC_get_input_fd() returns the file descriptor that PDCurses reads
+   its input from. It can be used for select().
 
 ### Portability
-                             X/Open    BSD    SYS V
+                             X/Open  ncurses  NetBSD
     PDC_get_input_fd            -       -       -
 
 **man-end****************************************************************/
@@ -267,13 +267,13 @@ static int _process_key_event(void)
         }
         else
         {
-            memmove(event.text.text, event.text.text+bytes,
-                    strlen(event.text.text)-bytes+1);
+            memmove(event.text.text, event.text.text + bytes,
+                    strlen(event.text.text) - bytes + 1);
         }
         return _handle_alt_keys(key);
 #else
         key = (unsigned char)event.text.text[0];
-        memmove(event.text.text, event.text.text+1,
+        memmove(event.text.text, event.text.text + 1,
                 strlen(event.text.text));
         return key > 0x7f ? -1 : _handle_alt_keys(key);
 #endif
@@ -447,24 +447,17 @@ int PDC_get_key(void)
         switch (event.window.event)
         {
         case SDL_WINDOWEVENT_SIZE_CHANGED:
-        case SDL_WINDOWEVENT_RESIZED:
-            if (pdc_own_window &&
-               (event.window.data2 / pdc_fheight != LINES ||
-                event.window.data1 / pdc_fwidth != COLS))
+            pdc_screen = SDL_GetWindowSurface(pdc_window);
+            pdc_sheight = pdc_screen->h - pdc_xoffset;
+            pdc_swidth = pdc_screen->w - pdc_yoffset;
+            touchwin(curscr);
+            wrefresh(curscr);
+
+            if (!SP->resized)
             {
-                pdc_sheight = event.window.data2;
-                pdc_swidth = event.window.data1;
-
-                pdc_screen = SDL_GetWindowSurface(pdc_window);
-                touchwin(curscr);
-                wrefresh(curscr);
-
-                if (!SP->resized)
-                {
-                    SP->resized = TRUE;
-                    SP->key_code = TRUE;
-                    return KEY_RESIZE;
-                }
+                SP->resized = TRUE;
+                SP->key_code = TRUE;
+                return KEY_RESIZE;
             }
             break;
         case SDL_WINDOWEVENT_RESTORED:
@@ -501,7 +494,13 @@ void PDC_flushinp(void)
 {
     PDC_LOG(("PDC_flushinp() - called\n"));
 
-    while (PDC_check_key());
+    while (PDC_check_key())
+        PDC_get_key();
+}
+
+bool PDC_has_mouse(void)
+{
+    return TRUE;
 }
 
 int PDC_mouse_set(void)

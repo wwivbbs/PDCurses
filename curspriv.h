@@ -1,5 +1,3 @@
-/* Public Domain Curses */
-
 /* Private definitions and declarations for use within PDCurses.
    These should generally not be referenced by applications. */
 
@@ -10,13 +8,13 @@
 #include <curses.h>
 
 #if defined(__TURBOC__) || defined(__EMX__) || defined(__DJGPP__) || \
-    defined(__CYGWIN__) || defined(__MINGW32__) || defined(__WATCOMC__)
+    defined(PDC_99) || defined(__WATCOMC__)
 # ifndef HAVE_VSSCANF
 #  define HAVE_VSSCANF       /* have vsscanf() */
 # endif
 #endif
 
-#if defined(__CYGWIN__) || defined(__MINGW32__) || defined(__WATCOMC__)
+#if defined(PDC_99) || defined(__WATCOMC__)
 # ifndef HAVE_VSNPRINTF
 #  define HAVE_VSNPRINTF     /* have vsnprintf() */
 # endif
@@ -65,6 +63,7 @@ int     PDC_get_cursor_mode(void);
 int     PDC_get_key(void);
 int     PDC_get_rows(void);
 void    PDC_gotoyx(int, int);
+bool    PDC_has_mouse(void);
 int     PDC_init_color(short, short, short, short);
 void    PDC_init_pair(short, short, short);
 int     PDC_modifiers_set(void);
@@ -107,11 +106,7 @@ size_t  PDC_wcstombs(char *, const wchar_t *, size_t);
 
 /* Internal macros for attributes */
 
-#ifdef CHTYPE_LONG
-# define PDC_COLOR_PAIRS 256
-#else
-# define PDC_COLOR_PAIRS  32
-#endif
+#define PDC_COLOR_PAIRS 256
 
 #ifndef max
 # define max(a,b) (((a) > (b)) ? (a) : (b))
@@ -125,4 +120,6 @@ size_t  PDC_wcstombs(char *, const wchar_t *, size_t);
 #define PDC_CLICK_PERIOD 150  /* time to wait for a click, if
                                  not set by mouseinterval() */
 
-#endif /* __CURSES_INTERNALS__*/
+#define PDC_MAXCOL 768        /* maximum possible COLORS; may be less */
+
+#endif /* __CURSES_INTERNALS__ */

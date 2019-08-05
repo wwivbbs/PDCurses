@@ -1,4 +1,4 @@
-/* Public Domain Curses */
+/* PDCurses */
 
 #include "pdcsdl.h"
 
@@ -13,11 +13,11 @@ pdckbd
 
 ### Description
 
-   PDC_get_input_fd() returns the file descriptor that PDCurses
-   reads its input from. It can be used for select().
+   PDC_get_input_fd() returns the file descriptor that PDCurses reads
+   its input from. It can be used for select().
 
 ### Portability
-                             X/Open    BSD    SYS V
+                             X/Open  ncurses  NetBSD
     PDC_get_input_fd            -       -       -
 
 **man-end****************************************************************/
@@ -397,6 +397,11 @@ void PDC_flushinp(void)
     PDC_LOG(("PDC_flushinp() - called\n"));
 
     while (PDC_check_key());
+}
+
+bool PDC_has_mouse(void)
+{
+    return TRUE;
 }
 
 int PDC_mouse_set(void)

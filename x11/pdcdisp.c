@@ -1,63 +1,47 @@
-/* Public Domain Curses */
+/* PDCurses */
 
 #include "pdcx11.h"
 
 #include <string.h>
 
-#ifdef CHTYPE_LONG
-
-# define A(x) ((chtype)x | A_ALTCHARSET)
+#ifdef PDC_WIDE
+# include "../common/acsuni.h"
+#else
 
 chtype acs_map[128] =
 {
-    A(0), A(1), A(2), A(3), A(4), A(5), A(6), A(7), A(8), A(9), A(10),
-    A(11), A(12), A(13), A(14), A(15), A(16), A(17), A(18), A(19),
-    A(20), A(21), A(22), A(23), A(24), A(25), A(26), A(27), A(28),
-    A(29), A(30), A(31), ' ', '!', '"', '#', '$', '%', '&', '\'', '(',
-    ')', '*',
+    PDC_ACS(0), PDC_ACS(1), PDC_ACS(2), PDC_ACS(3), PDC_ACS(4),
+    PDC_ACS(5), PDC_ACS(6), PDC_ACS(7), PDC_ACS(8), PDC_ACS(9),
+    PDC_ACS(10), PDC_ACS(11), PDC_ACS(12), PDC_ACS(13), PDC_ACS(14),
+    PDC_ACS(15), PDC_ACS(16), PDC_ACS(17), PDC_ACS(18), PDC_ACS(19),
+    PDC_ACS(20), PDC_ACS(21), PDC_ACS(22), PDC_ACS(23), PDC_ACS(24),
+    PDC_ACS(25), PDC_ACS(26), PDC_ACS(27), PDC_ACS(28), PDC_ACS(29),
+    PDC_ACS(30), PDC_ACS(31), ' ', '!', '"', '#', '$', '%', '&', '\'',
+    '(', ')', '*',
 
-# ifdef PDC_WIDE
-    0x2192, 0x2190, 0x2191, 0x2193,
-# else
     '>', '<', '^', 'v',
-# endif
 
     '/',
 
-# ifdef PDC_WIDE
-    0x2588,
-# else
-    A(0),
-# endif
+    PDC_ACS(0),
 
     '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=',
     '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
     'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W',
     'X', 'Y', 'Z', '[', '\\', ']', '^', '_',
 
-# ifdef PDC_WIDE
-    0x2666, 0x2592,
-# else
-    A(1), A(2),
-# endif
+    PDC_ACS(1), PDC_ACS(2),
 
     'b', 'c', 'd', 'e',
 
-# ifdef PDC_WIDE
-    0x00b0, 0x00b1, 0x2591, 0x00a4, 0x2518, 0x2510, 0x250c, 0x2514,
-    0x253c, 0x23ba, 0x23bb, 0x2500, 0x23bc, 0x23bd, 0x251c, 0x2524,
-    0x2534, 0x252c, 0x2502, 0x2264, 0x2265, 0x03c0, 0x2260, 0x00a3,
-    0x00b7,
-# else
-    A(7), A(8), '#', 0xa4, A(11), A(12), A(13), A(14), A(15), A(16),
-    A(17), A(18), A(19), A(20), A(21), A(22), A(23), A(24), A(25),
-    A(26), A(27), A(28), A(29), A(30), 0xb7,
-# endif
+    PDC_ACS(7), PDC_ACS(8), '#', 0xa4, PDC_ACS(11), PDC_ACS(12),
+    PDC_ACS(13), PDC_ACS(14), PDC_ACS(15), PDC_ACS(16), PDC_ACS(17),
+    PDC_ACS(18), PDC_ACS(19), PDC_ACS(20), PDC_ACS(21), PDC_ACS(22),
+    PDC_ACS(23), PDC_ACS(24), PDC_ACS(25), PDC_ACS(26), PDC_ACS(27),
+    PDC_ACS(28), PDC_ACS(29), PDC_ACS(30), 0xb7,
 
-    A(127)
+    PDC_ACS(127)
 };
-
-# undef A
 
 #endif
 

@@ -19,10 +19,10 @@
 
 /* change this if source at other location */
 
-#ifdef XCURSES
-# define FNAME  "../demos/tui.c"
+#ifdef PDC_FORCE_UTF8
+# define FNAME "../demos/UTF-8-demo.txt"
 #else
-# define FNAME  "..\\demos\\tui.c"
+# define FNAME "../demos/tui.c"
 #endif
 
 /**************************** strings entry box ***************************/

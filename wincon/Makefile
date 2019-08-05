@@ -1,6 +1,7 @@
-# GNU MAKE Makefile for PDCurses library - Windows console GCC
+# GNU Makefile for PDCurses - Windows console
 #
-# Usage: make [-f path\Makefile] [DEBUG=Y] [DLL=Y] [WIDE=Y] [UTF8=Y] [tgt]
+# Usage: make [-f path\Makefile] [DEBUG=Y] [DLL=Y] [WIDE=Y] [UTF8=Y]
+#        [INFOEX=N] [tgt]
 #
 # where tgt can be any of:
 # [all|demos|pdcurses.a|testcurs.exe...]
@@ -18,10 +19,10 @@ ifndef PDCURSES_SRCDIR
 	PDCURSES_SRCDIR = ..
 endif
 
-include $(PDCURSES_SRCDIR)/version.mif
-include $(PDCURSES_SRCDIR)/libobjs.mif
-
 osdir		= $(PDCURSES_SRCDIR)/wincon
+common		= $(PDCURSES_SRCDIR)/common
+
+include $(common)/libobjs.mif
 
 PDCURSES_WIN_H	= $(osdir)/pdcwin.h
 
@@ -53,14 +54,17 @@ ifeq ($(DLL),Y)
 	LIBEXE = $(CC)
 	LIBFLAGS = -Wl,--out-implib,pdcurses.a -shared -o
 	LIBCURSES = pdcurses.dll
-	LIBDEPS = $(LIBOBJS) $(PDCOBJS)
 	CLEAN = $(LIBCURSES) *.a
+	RESOURCE = pdcurses.o
 else
 	LIBEXE = $(AR)
 	LIBFLAGS = rcv
 	LIBCURSES = pdcurses.a
-	LIBDEPS = $(LIBOBJS) $(PDCOBJS)
 	CLEAN = *.a
+endif
+
+ifeq ($(INFOEX),N)
+	CFLAGS += -DHAVE_NO_INFOEX
 endif
 
 .PHONY: all libs clean demos dist
@@ -79,14 +83,16 @@ ifneq ($(DEBUG),Y)
 	$(STRIP) *.exe
 endif
 
-$(LIBCURSES) : $(LIBDEPS)
+$(LIBCURSES) : $(LIBOBJS) $(PDCOBJS) $(RESOURCE)
 	$(LIBEXE) $(LIBFLAGS) $@ $?
+
+pdcurses.o: $(common)/pdcurses.rc
+	windres -i $(common)/pdcurses.rc pdcurses.o
 
 $(LIBOBJS) $(PDCOBJS) : $(PDCURSES_HEADERS)
 $(PDCOBJS) : $(PDCURSES_WIN_H)
 $(DEMOS) : $(PDCURSES_CURSES_H) $(LIBCURSES)
 panel.o : $(PANEL_HEADER)
-terminfo.o: $(TERM_HEADER)
 
 $(LIBOBJS) : %.o: $(srcdir)/%.c
 	$(CC) -c $(CFLAGS) $<
@@ -106,9 +112,3 @@ tui.o: $(demodir)/tui.c $(demodir)/tui.h $(PDCURSES_CURSES_H)
 
 tuidemo.o: $(demodir)/tuidemo.c $(PDCURSES_CURSES_H)
 	$(CC) -c $(CFLAGS) -I$(demodir) -o$@ $<
-
-PLATFORM1 = GCC Wincon
-PLATFORM2 = GCC for Windows console
-ARCNAME = pdc$(VER)_gcc_wincon
-
-include $(PDCURSES_SRCDIR)/makedist.mif

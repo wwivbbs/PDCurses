@@ -1,4 +1,4 @@
-/* Public Domain Curses */
+/* PDCurses */
 
 #include "pdcx11.h"
 
@@ -10,13 +10,9 @@
 # include <Sunkeysym.h>
 #endif
 
-#ifdef HAVE_XPM_H
-# include <xpm.h>
-#endif
+#include <xpm.h>
 
-#if defined PDC_XIM
-# include <Xlocale.h>
-#endif
+#include <Xlocale.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -37,17 +33,16 @@ XCursesAppData xc_app_data;
 # define PDC_SCROLLBAR_TYPE float
 #endif
 
-#define MAX_COLORS   256            /* maximum of "normal" colors */
-#define COLOR_CURSOR MAX_COLORS     /* color of cursor */
-#define COLOR_BORDER MAX_COLORS + 1 /* color of border */
+#define COLOR_CURSOR PDC_MAXCOL     /* color of cursor */
+#define COLOR_BORDER PDC_MAXCOL + 1 /* color of border */
 
 #define XCURSESDISPLAY (XtDisplay(drawing))
 #define XCURSESWIN     (XtWindow(drawing))
 
 /* Default icons for XCurses applications.  */
 
-#include "big_icon.xbm"
-#include "little_icon.xbm"
+#include "../common/icon64.xpm"
+#include "../common/icon32.xpm"
 
 static void _selection_off(void);
 static void _display_cursor(int, int, int, int);
@@ -206,10 +201,6 @@ static struct
  {0,            0,      0,           0,            0,           0}
 };
 
-#ifndef PDC_XIM
-# include "compose.h"
-#endif
-
 #define BITMAPDEPTH 1
 
 unsigned long pdc_key_modifiers = 0L;
@@ -218,24 +209,7 @@ static GC normal_gc, rect_cursor_gc, italic_gc, bold_gc, border_gc;
 static int font_height, font_width, font_ascent, font_descent,
            window_width, window_height;
 static int resize_window_width = 0, resize_window_height = 0;
-static char *bitmap_file = NULL;
-#ifdef HAVE_XPM_H
-static char *pixmap_file = NULL;
-#endif
 static KeySym keysym = 0;
-
-static int state_mask[8] =
-{
-    ShiftMask,
-    LockMask,
-    ControlMask,
-    Mod1Mask,
-    Mod2Mask,
-    Mod3Mask,
-    Mod4Mask,
-    Mod5Mask
-};
-
 static Atom wm_atom[2];
 static String class_name = "XCurses";
 static XtAppContext app_context;
@@ -246,11 +220,8 @@ static chtype *tmpsel = NULL;
 static unsigned long tmpsel_length = 0;
 static int selection_start_x = 0, selection_start_y = 0,
            selection_end_x = 0, selection_end_y = 0;
-static Pixmap icon_bitmap;
-#ifdef HAVE_XPM_H
 static Pixmap icon_pixmap;
 static Pixmap icon_pixmap_mask;
-#endif
 static bool visible_cursor = FALSE;
 static bool window_entered = TRUE;
 static char *program_name;
@@ -334,10 +305,7 @@ static XtResource app_resources[] =
     RFONT(boldFont, BoldFont, DEFBFONT),
 
     RSTRING(bitmap, Bitmap),
-#ifdef HAVE_XPM_H
     RSTRING(pixmap, Pixmap),
-#endif
-    RSTRINGP(composeKey, ComposeKey, "Multi_key"),
 
     RCURSOR(pointer, Pointer, xterm),
 
@@ -378,10 +346,8 @@ static XrmOptionDescRec options[] =
 {
     COPT(lines), COPT(cols), COPT(normalFont), COPT(italicFont),
     COPT(boldFont), COPT(bitmap),
-#ifdef HAVE_XPM_H
     COPT(pixmap),
-#endif
-    COPT(pointer), COPT(shmmin), COPT(composeKey), COPT(clickPeriod),
+    COPT(pointer), COPT(shmmin), COPT(clickPeriod),
     COPT(doubleClickPeriod), COPT(scrollbarWidth),
     COPT(pointerForeColor), COPT(pointerBackColor),
     COPT(cursorBlinkRate), COPT(cursorColor), COPT(textCursor),
@@ -407,13 +373,11 @@ static XtActionsRec action_table[] =
 };
 
 static bool after_first_curses_request = FALSE;
-static Pixel colors[MAX_COLORS + 2];
+static Pixel colors[PDC_MAXCOL + 2];
 static bool vertical_cursor = FALSE;
 
-#ifdef PDC_XIM
 static XIM Xim = NULL;
 static XIC Xic = NULL;
-#endif
 
 static const char *default_translations =
 {
@@ -701,13 +665,11 @@ static int _display_text(const chtype *ch, int row, int col,
 
         attr = curr & A_ATTRIBUTES;
 
-#ifdef CHTYPE_LONG
         if (attr & A_ALTCHARSET && !(curr & 0xff80))
         {
             attr ^= A_ALTCHARSET;
             curr = acs_map[curr & 0x7f];
         }
-#endif
 
 #ifndef PDC_WIDE
         /* Special handling for ACS_BLOCK */
@@ -850,108 +812,79 @@ static void _set_cursor_color(chtype *ch, short *fore, short *back)
 
 static void _get_icon(void)
 {
-    XIconSize *icon_size;
-    int size_count = 0;
     Status rc;
-    unsigned char *bitmap_bits = NULL;
-    unsigned icon_bitmap_width = 0, icon_bitmap_height = 0,
-             file_bitmap_width = 0, file_bitmap_height = 0;
 
     XC_LOG(("_get_icon() - called\n"));
 
-    icon_size = XAllocIconSize();
-
-    rc = XGetIconSizes(XtDisplay(topLevel),
-                       RootWindowOfScreen(XtScreen(topLevel)),
-                       &icon_size, &size_count);
-
-    /* if the WM can advise on icon sizes... */
-
-    if (rc && size_count)
-    {
-        int i, max_height = 0, max_width = 0;
-
-        PDC_LOG(("%s:size_count: %d rc: %d\n", XCLOGMSG, size_count, rc));
-
-        for (i = 0; i < size_count; i++)
-        {
-            if (icon_size[i].max_width > max_width)
-                max_width = icon_size[i].max_width;
-            if (icon_size[i].max_height > max_height)
-                max_height = icon_size[i].max_height;
-
-            PDC_LOG(("%s:min: %d %d\n", XCLOGMSG,
-                     icon_size[i].min_width, icon_size[i].min_height));
-
-            PDC_LOG(("%s:max: %d %d\n", XCLOGMSG,
-                     icon_size[i].max_width, icon_size[i].max_height));
-
-            PDC_LOG(("%s:inc: %d %d\n", XCLOGMSG,
-                     icon_size[i].width_inc, icon_size[i].height_inc));
-        }
-
-        if (max_width >= big_icon_width && max_height >= big_icon_height)
-        {
-            icon_bitmap_width = big_icon_width;
-            icon_bitmap_height = big_icon_height;
-            bitmap_bits = (unsigned char *)big_icon_bits;
-        }
-        else
-        {
-            icon_bitmap_width = little_icon_width;
-            icon_bitmap_height = little_icon_height;
-            bitmap_bits = (unsigned char *)little_icon_bits;
-        }
-
-    }
-    else  /* use small icon */
-    {
-        icon_bitmap_width = little_icon_width;
-        icon_bitmap_height = little_icon_height;
-        bitmap_bits = (unsigned char *)little_icon_bits;
-    }
-
-    XFree(icon_size);
-
-#ifdef HAVE_XPM_H
     if (xc_app_data.pixmap && xc_app_data.pixmap[0]) /* supplied pixmap */
     {
         XpmReadFileToPixmap(XtDisplay(topLevel),
                             RootWindowOfScreen(XtScreen(topLevel)),
                             (char *)xc_app_data.pixmap,
                             &icon_pixmap, &icon_pixmap_mask, NULL);
-        return;
     }
-#endif
-
-    if (xc_app_data.bitmap && xc_app_data.bitmap[0]) /* supplied bitmap */
+    else if (xc_app_data.bitmap && xc_app_data.bitmap[0]) /* supplied bitmap */
     {
+        unsigned file_bitmap_width = 0, file_bitmap_height = 0;
         int x_hot = 0, y_hot = 0;
 
         rc = XReadBitmapFile(XtDisplay(topLevel),
                              RootWindowOfScreen(XtScreen(topLevel)),
                              (char *)xc_app_data.bitmap,
                              &file_bitmap_width, &file_bitmap_height,
-                             &icon_bitmap, &x_hot, &y_hot);
+                             &icon_pixmap, &x_hot, &y_hot);
 
-        switch(rc)
-        {
-        case BitmapOpenFailed:
+        if (BitmapOpenFailed == rc)
             fprintf(stderr, "bitmap file %s: not found\n",
                     xc_app_data.bitmap);
-            break;
-        case BitmapFileInvalid:
+        else if (BitmapFileInvalid == rc)
             fprintf(stderr, "bitmap file %s: contents invalid\n",
                     xc_app_data.bitmap);
-            break;
-        default:
-            return;
-        }
     }
+    else
+    {
+        XIconSize *icon_size;
+        int size_count = 0, max_height = 0, max_width = 0;
 
-    icon_bitmap = XCreateBitmapFromData(XtDisplay(topLevel),
-        RootWindowOfScreen(XtScreen(topLevel)),
-        (char *)bitmap_bits, icon_bitmap_width, icon_bitmap_height);
+        icon_size = XAllocIconSize();
+
+        rc = XGetIconSizes(XtDisplay(topLevel),
+                           RootWindowOfScreen(XtScreen(topLevel)),
+                           &icon_size, &size_count);
+
+        /* if the WM can advise on icon sizes... */
+
+        if (rc && size_count)
+        {
+            int i;
+
+            PDC_LOG(("%s:size_count: %d rc: %d\n", XCLOGMSG, size_count, rc));
+
+            for (i = 0; i < size_count; i++)
+            {
+                if (icon_size[i].max_width > max_width)
+                    max_width = icon_size[i].max_width;
+                if (icon_size[i].max_height > max_height)
+                    max_height = icon_size[i].max_height;
+
+                PDC_LOG(("%s:min: %d %d\n", XCLOGMSG,
+                         icon_size[i].min_width, icon_size[i].min_height));
+
+                PDC_LOG(("%s:max: %d %d\n", XCLOGMSG,
+                         icon_size[i].max_width, icon_size[i].max_height));
+
+                PDC_LOG(("%s:inc: %d %d\n", XCLOGMSG,
+                         icon_size[i].width_inc, icon_size[i].height_inc));
+            }
+        }
+
+        XFree(icon_size);
+
+        XpmCreatePixmapFromData(XtDisplay(topLevel),
+              RootWindowOfScreen(XtScreen(topLevel)),
+              (max_width >= 64 && max_height >= 64) ? icon64 : icon32,
+              &icon_pixmap, &icon_pixmap_mask, NULL);
+    }
 }
 
 static void _draw_border(void)
@@ -1057,18 +990,8 @@ static void _handle_nonmaskable(Widget w, XtPointer client_data, XEvent *event,
 static void XCursesKeyPress(Widget w, XEvent *event, String *params,
                             Cardinal *nparams)
 {
-    enum { STATE_NORMAL, STATE_COMPOSE, STATE_CHAR };
-
-#ifdef PDC_XIM
     Status status;
     wchar_t buffer[120];
-#else
-    unsigned char buffer[120];
-    XComposeStatus compose;
-    static int compose_state = STATE_NORMAL;
-    static int compose_index = 0;
-    int char_idx = 0;
-#endif
     unsigned long key = 0;
     int buflen = 40;
     int i, count;
@@ -1085,9 +1008,6 @@ static void XCursesKeyPress(Widget w, XEvent *event, String *params,
            with a KeyPress event (or reset by the mouse event handler) */
 
         if (SP->return_key_modifiers &&
-#ifndef PDC_XIM
-            keysym != compose_key &&
-#endif
             IsModifierKey(keysym))
         {
             switch (keysym) {
@@ -1119,13 +1039,8 @@ static void XCursesKeyPress(Widget w, XEvent *event, String *params,
 
     buffer[0] = '\0';
 
-#ifdef PDC_XIM
     count = XwcLookupString(Xic, &(event->xkey), buffer, buflen,
                             &keysym, &status);
-#else
-    count = XLookupString(&(event->xkey), (char *)buffer, buflen,
-                          &keysym, &compose);
-#endif
 
     /* translate keysym into curses key code */
 
@@ -1136,123 +1051,6 @@ static void XCursesKeyPress(Widget w, XEvent *event, String *params,
         PDC_debug("%s:Keysym %x %d\n", XCLOGMSG,
                   XKeycodeToKeysym(XCURSESDISPLAY, event->xkey.keycode, i), i);
 #endif
-
-#ifndef PDC_XIM
-
-    /* Check if the key just pressed is the user-specified compose
-       key; if it is, set the compose state and exit. */
-
-    if (keysym == compose_key)
-    {
-        chtype *ch;
-        int xpos, ypos, save_visibility = SP->visibility;
-        short fore = 0, back = 0;
-
-        /* Change the shape of the cursor to an outline rectangle to
-           indicate we are in "compose" status */
-
-        SP->visibility = 0;
-
-        _redraw_cursor();
-
-        SP->visibility = save_visibility;
-        _make_xy(SP->curscol, SP->cursrow, &xpos, &ypos);
-
-        ch = (chtype *)(Xcurscr + XCURSCR_Y_OFF(SP->cursrow) +
-             (SP->curscol * sizeof(chtype)));
-
-        _set_cursor_color(ch, &fore, &back);
-
-        XSetForeground(XCURSESDISPLAY, rect_cursor_gc, colors[back]);
-
-        XDrawRectangle(XCURSESDISPLAY, XCURSESWIN, rect_cursor_gc,
-                       xpos + 1, ypos - font_height +
-                       xc_app_data.normalFont->descent + 1,
-                       font_width - 2, font_height - 2);
-
-        compose_state = STATE_COMPOSE;
-        return;
-    }
-
-    switch (compose_state)
-    {
-    case STATE_COMPOSE:
-        if (IsModifierKey(keysym))
-            return;
-
-        if (event->xkey.state & compose_mask)
-        {
-            compose_state = STATE_NORMAL;
-            _redraw_cursor();
-            break;
-        }
-
-        if (buffer[0] && count == 1)
-            key = buffer[0];
-
-        compose_index = -1;
-
-        for (i = 0; i < (int)strlen(compose_chars); i++)
-            if (compose_chars[i] == key)
-            {
-                compose_index = i;
-                break;
-            }
-
-        if (compose_index == -1)
-        {
-            compose_state = STATE_NORMAL;
-            compose_index = 0;
-            _redraw_cursor();
-            break;
-        }
-
-        compose_state = STATE_CHAR;
-        return;
-
-    case STATE_CHAR:
-        if (IsModifierKey(keysym))
-            return;
-
-        if (event->xkey.state & compose_mask)
-        {
-            compose_state = STATE_NORMAL;
-            _redraw_cursor();
-            break;
-        }
-
-        if (buffer[0] && count == 1)
-            key = buffer[0];
-
-        char_idx = -1;
-
-        for (i = 0; i < MAX_COMPOSE_CHARS; i++)
-            if (compose_lookups[compose_index][i] == key)
-            {
-                char_idx = i;
-                break;
-            }
-
-        if (char_idx == -1)
-        {
-            compose_state = STATE_NORMAL;
-            compose_index = 0;
-            _redraw_cursor();
-            break;
-        }
-
-        _send_key_to_curses(compose_keys[compose_index][char_idx],
-            NULL, FALSE);
-
-        compose_state = STATE_NORMAL;
-        compose_index = 0;
-
-        _redraw_cursor();
-
-        return;
-    }
-
-#endif /* PDC_XIM */
 
     /* To get here we are procesing "normal" keys */
 
@@ -2390,28 +2188,17 @@ static void _exit_process(int rc, int sig, char *msg)
     shmctl(shmidSP, IPC_RMID, 0);
     shmctl(shmid_Xcurscr, IPC_RMID, 0);
 
-    if (bitmap_file)
-    {
-        XFreePixmap(XCURSESDISPLAY, icon_bitmap);
-        free(bitmap_file);
-    }
-
-#ifdef HAVE_XPM_H
-    if (pixmap_file)
-    {
+    if (icon_pixmap)
         XFreePixmap(XCURSESDISPLAY, icon_pixmap);
+    if (icon_pixmap_mask)
         XFreePixmap(XCURSESDISPLAY, icon_pixmap_mask);
-        free(pixmap_file);
-    }
-#endif
+
     XFreeGC(XCURSESDISPLAY, normal_gc);
     XFreeGC(XCURSESDISPLAY, italic_gc);
     XFreeGC(XCURSESDISPLAY, bold_gc);
     XFreeGC(XCURSESDISPLAY, rect_cursor_gc);
     XFreeGC(XCURSESDISPLAY, border_gc);
-#ifdef PDC_XIM
     XDestroyIC(Xic);
-#endif
 
     shutdown(xc_display_sock, 2);
     close(xc_display_sock);
@@ -2496,7 +2283,7 @@ static void _get_color(void)
     Colormap cmap = DefaultColormap(XCURSESDISPLAY,
                                     DefaultScreen(XCURSESDISPLAY));
 
-    if (index < 0 || index >= MAX_COLORS)
+    if (index < 0 || index >= PDC_MAXCOL)
         _exit_process(4, SIGKILL, "exiting from _get_color");
 
     tmp->pixel = colors[index];
@@ -2512,16 +2299,11 @@ static void _set_color(void)
     Colormap cmap = DefaultColormap(XCURSESDISPLAY,
                                     DefaultScreen(XCURSESDISPLAY));
 
-    if (index < 0 || index >= MAX_COLORS)
+    if (index < 0 || index >= PDC_MAXCOL)
         _exit_process(4, SIGKILL, "exiting from _set_color");
 
     if (XAllocColor(XCURSESDISPLAY, cmap, tmp))
-    {
-        XFreeColors(XCURSESDISPLAY, cmap, colors + index, 1, 0);
         colors[index] = tmp->pixel;
-
-        _display_screen();
-    }
 }
 
 /* For PDC_getclipboard() */
@@ -2866,6 +2648,11 @@ static void _process_curses_requests(XtPointer client_data, int *fid,
             _resume_curses();
             break;
 
+        case CURSES_DISPLAY_ALL:
+            XC_LOG(("CURSES_DISPLAY_ALL recieved from child\n"));
+            _display_screen();
+            break;
+
         default:
             PDC_LOG(("%s:Unknown request %d\n", XCLOGMSG, num_cols));
         }
@@ -2957,12 +2744,10 @@ static void _handle_signals(int signo)
         _exit_process(7, signo, "exiting from _handle_signals");
 }
 
-#ifdef PDC_XIM
 static void _dummy_handler(Widget w, XtPointer client_data,
                            XEvent *event, Boolean *unused)
 {
 }
-#endif
 
 int XCursesSetupX(int argc, char *argv[])
 {
@@ -3062,19 +2847,11 @@ int XCursesSetupX(int argc, char *argv[])
 
     _get_icon();
 
-#ifdef HAVE_XPM_H
-    if (xc_app_data.pixmap && xc_app_data.pixmap[0])
-        XtVaSetValues(topLevel, XtNminWidth, minwidth, XtNminHeight,
-                      minheight, XtNbaseWidth, xc_app_data.borderWidth * 2,
-                      XtNbaseHeight, xc_app_data.borderWidth * 2,
-                      XtNiconPixmap, icon_pixmap,
-                      XtNiconMask, icon_pixmap_mask, NULL);
-    else
-#endif
-        XtVaSetValues(topLevel, XtNminWidth, minwidth, XtNminHeight,
-                      minheight, XtNbaseWidth, xc_app_data.borderWidth * 2,
-                      XtNbaseHeight, xc_app_data.borderWidth * 2,
-                      XtNiconPixmap, icon_bitmap, NULL);
+    XtVaSetValues(topLevel, XtNminWidth, minwidth, XtNminHeight,
+                  minheight, XtNbaseWidth, xc_app_data.borderWidth * 2,
+                  XtNbaseHeight, xc_app_data.borderWidth * 2,
+                  XtNiconPixmap, icon_pixmap,
+                  XtNiconMask, icon_pixmap_mask, NULL);
 
     /* Create a BOX widget in which to draw */
 
@@ -3256,44 +3033,6 @@ int XCursesSetupX(int argc, char *argv[])
     XRecolorCursor(XCURSESDISPLAY, xc_app_data.pointer,
                    &pointerforecolor, &pointerbackcolor);
 
-#ifndef PDC_XIM
-
-    /* Convert the supplied compose key to a Keysym */
-
-    compose_key = XStringToKeysym(xc_app_data.composeKey);
-
-    if (compose_key && IsModifierKey(compose_key))
-    {
-        int i, j;
-        KeyCode *kcp;
-        XModifierKeymap *map;
-        KeyCode compose_keycode = XKeysymToKeycode(XCURSESDISPLAY, compose_key);
-
-        map = XGetModifierMapping(XCURSESDISPLAY);
-        kcp = map->modifiermap;
-
-        for (i = 0; i < 8; i++)
-        {
-            for (j = 0; j < map->max_keypermod; j++, kcp++)
-            {
-                if (!*kcp)
-                    continue;
-
-                if (compose_keycode == *kcp)
-                {
-                    compose_mask = state_mask[i];
-                    break;
-                }
-            }
-
-            if (compose_mask)
-                break;
-        }
-
-        XFreeModifiermap(map);
-    }
-
-#else
     Xim = XOpenIM(XCURSESDISPLAY, NULL, NULL, NULL);
 
     if (Xim)
@@ -3324,8 +3063,6 @@ int XCursesSetupX(int argc, char *argv[])
         shmctl(shmid_Xcurscr, IPC_RMID, 0);
         return ERR;
     }
-
-#endif
 
     /* Wait for events */
     {
