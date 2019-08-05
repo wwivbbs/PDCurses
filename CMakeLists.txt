@@ -22,7 +22,6 @@ set(COMMON_SOURCES
 	pdcurses/debug.c
 	pdcurses/delch.c
 	pdcurses/deleteln.c
-	pdcurses/deprec.c
 	pdcurses/getch.c
 	pdcurses/getstr.c
 	pdcurses/getyx.c
@@ -48,7 +47,6 @@ set(COMMON_SOURCES
 	pdcurses/scr_dump.c
 	pdcurses/slk.c
 	pdcurses/termattr.c
-	pdcurses/terminfo.c
 	pdcurses/touch.c
 	pdcurses/util.c
 	pdcurses/window.c
