@@ -11,8 +11,6 @@
 # include "../common/acs437.h"
 #endif
 
-Uint32 pdc_lastupdate = 0;
-
 #define MAXRECT 200     /* maximum number of rects to queue up before
                            an update is forced; the number was chosen
                            arbitrarily */
@@ -68,7 +66,6 @@ void PDC_update_rects(void)
                 SDL_UpdateWindowSurfaceRects(pdc_window, uprect, rectcount);
         }
 
-        pdc_lastupdate = SDL_GetTicks();
         rectcount = 0;
     }
 }
@@ -96,7 +93,7 @@ static void _set_attr(chtype ch)
         if (SP->mono)
             return;
 
-        PDC_pair_content(PAIR_NUMBER(ch), &newfg, &newbg);
+        pair_content(PAIR_NUMBER(ch), &newfg, &newbg);
 
         if ((ch & A_BOLD) && !(sysattrs & A_BOLD))
             newfg |= 8;
@@ -555,4 +552,10 @@ void PDC_blink_text(void)
     }
 
     oldch = (chtype)(-1);
+}
+
+void PDC_doupdate(void)
+{
+    PDC_update_rects();
+    SDL_Delay(1);
 }

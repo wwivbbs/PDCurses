@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT(PDCurses, 3.8, wmcbrine@gmail.com, PDCurses)
+AC_INIT(PDCurses, 3.9, wmcbrine@gmail.com, PDCurses)
 AC_CONFIG_SRCDIR(pdcx11.h)
 
 AC_SUBST(prefix)
@@ -31,33 +31,20 @@ case "$target" in
 esac
 AC_SUBST(SYS_DEFS)
 
-MH_CHECK_MAX_SIGNALS(NSIG __sys_nsig)
-
 dnl Check for other programs.
 AC_PROG_RANLIB
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 
-dnl ensure that the system has System V IPC support
-MH_IPC
-
-if test $ac_cv_header_stdc != yes; then
-	AC_MSG_ERROR([Need ANSI C headers])
-fi
-
 dnl Checks for libraries.
 
 dnl we check for dlfcn.h or dl.h so we know if we can build shared objects
-AC_CHECK_HEADERS(fcntl.h \
-	sys/time.h \
-	sys/select.h \
-	dlfcn.h \
+AC_CHECK_HEADERS(dlfcn.h \
 	dl.h
 )
 
 dnl Checks for typedefs, structures, and compiler characteristics.
-AC_HEADER_TIME
-MH_CHECK_LIB(socket nls)
+MH_CHECK_LIB(nls)
 AC_SUBST(MH_EXTRA_LIBS)
 MH_CHECK_CC_O
 
@@ -158,10 +145,6 @@ MH_SHARED_LIBRARY(XCurses)
 
 AC_CONFIG_FILES([Makefile xcurses-config])
 AC_OUTPUT
-
-AC_DEFINE([PDC_MAX_SIGNALS], [],
-	[Define as the system defined limit for number of signals]
-)
 
 AC_DEFINE([HAVE_DECKEYSYM_H], [],
 	[Define if you have the <DECkeySym.h> header file]

@@ -92,7 +92,7 @@ refresh.o scanw.o scr_dump.o scroll.o slk.o termattr.o \
 touch.o util.o window.o debug.o
 
 PDCOBJS = pdcclip.o pdcdisp.o pdcgetsc.o pdckbd.o pdcscrn.o pdcsetsc.o \
-pdcutil.o pdcx11.o x11.o sb.o ScrollBox.o
+pdcutil.o sb.o scrlbox.o
 
 LIBSHOBJS = $(LIBOBJS:.o=.sho)
 PDCSHOBJS = $(PDCOBJS:.o=.sho)
@@ -252,17 +252,11 @@ pdcsetsc.o: $(osdir)/pdcsetsc.c
 pdcutil.o: $(osdir)/pdcutil.c
 	$(BUILD) $(osdir)/pdcutil.c
 
-pdcx11.o: $(osdir)/pdcx11.c
-	$(BUILD) $(osdir)/pdcx11.c
-
-ScrollBox.o: $(osdir)/ScrollBox.c
-	$(BUILD) $(osdir)/ScrollBox.c
+scrlbox.o: $(osdir)/scrlbox.c
+	$(BUILD) $(osdir)/scrlbox.c
 
 sb.o: $(osdir)/sb.c
 	$(BUILD) $(osdir)/sb.c
-
-x11.o: $(osdir)/x11.c
-	$(BUILD) $(osdir)/x11.c
 
 addch.sho: $(srcdir)/addch.c
 	$(DYN_BUILD) $(srcdir)/addch.c
@@ -452,20 +446,12 @@ pdcutil.sho: $(osdir)/pdcutil.c
 	$(DYN_BUILD) $(osdir)/pdcutil.c
 	@SAVE2O@
 
-pdcx11.sho: $(osdir)/pdcx11.c
-	$(DYN_BUILD) $(osdir)/pdcx11.c
-	@SAVE2O@
-
-ScrollBox.sho: $(osdir)/ScrollBox.c
-	$(DYN_BUILD) $(osdir)/ScrollBox.c
+scrlbox.sho: $(osdir)/scrlbox.c
+	$(DYN_BUILD) $(osdir)/scrlbox.c
 	@SAVE2O@
 
 sb.sho: $(osdir)/sb.c
 	$(DYN_BUILD) $(osdir)/sb.c
-	@SAVE2O@
-
-x11.sho: $(osdir)/x11.c
-	$(DYN_BUILD) $(osdir)/x11.c
 	@SAVE2O@
 
 firework: firework.o

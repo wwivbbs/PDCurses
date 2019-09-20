@@ -882,7 +882,6 @@ getch
     int unget_wch(const wchar_t wch);
 
     unsigned long PDC_get_key_modifiers(void);
-    int PDC_save_key_modifiers(bool flag);
     int PDC_return_key_modifiers(bool flag);
 
 ### Description
@@ -921,8 +920,7 @@ getch
 
    PDC_get_key_modifiers() returns the keyboard modifiers (shift,
    control, alt, numlock) effective at the time of the last getch()
-   call, if PDC_save_key_modifiers(TRUE) has been called before the
-   getch(). Use the macros PDC_KEY_MODIFIER_* to determine which
+   call. Use the macros PDC_KEY_MODIFIER_* to determine which
    modifier(s) were set. PDC_return_key_modifiers() tells getch() to
    return modifier keys pressed alone as keystrokes (KEY_ALT_L, etc.).
    These may not work on all platforms.
@@ -1356,11 +1354,14 @@ inopts
    In PDCurses, the meta() function sets raw mode on or off.
 
    timeout() and wtimeout() set blocking or non-blocking reads for the
-   specified window. The delay is measured in milliseconds. If it's
-   negative, a blocking read is used; if zero, then non-blocking reads
-   are done -- if no input is waiting, ERR is returned immediately. If
-   the delay is positive, the read blocks for the delay period; if the
-   period expires, ERR is returned.
+   specified window. If the delay is negative, a blocking read is used;
+   if zero, then non-blocking reads are done -- if no input is waiting,
+   ERR is returned immediately. If the delay is positive, the read
+   blocks for the delay period; if the period expires, ERR is returned.
+   The delay is given in milliseconds, but this is rounded down to 50ms
+   (1/20th sec) intervals, with a minimum of one interval if a postive
+   delay is given; i.e., 1-99 will wait 50ms, 100-149 will wait 100ms,
+   etc.
 
    intrflush(), notimeout(), noqiflush(), qiflush() and typeahead() do
    nothing in PDCurses, but are included for compatibility with other
@@ -1640,7 +1641,12 @@ kernel
    Calling ripoffline() with a NULL init function pointer is an error.
 
    napms() suspends the program for the specified number of
-   milliseconds. draino() is an archaic equivalent.
+   milliseconds. draino() is an archaic equivalent. Note that since
+   napms() attempts to give up a time slice and yield control back to
+   the OS, all times are approximate. (In DOS, the delay is actually
+   rounded down to 50ms (1/20th sec) intervals, with a minimum of one
+   interval; i.e., 1-99 will wait 50ms, 100-149 will wait 100ms, etc.)
+   0 returns immediately.
 
    resetterm(), fixterm() and saveterm() are archaic equivalents for
    reset_shell_mode(), reset_prog_mode() and def_prog_mode(),
@@ -2837,9 +2843,9 @@ clipboard
 
    PDC_getclipboard() gets the textual contents of the system's
    clipboard. This function returns the contents of the clipboard in the
-   contents argument. It is the responsibilitiy of the caller to free
-   the memory returned, via PDC_freeclipboard(). The length of the
-   clipboard contents is returned in the length argument.
+   contents argument. It is the responsibility of the caller to free the
+   memory returned, via PDC_freeclipboard(). The length of the clipboard
+   contents is returned in the length argument.
 
    PDC_setclipboard copies the supplied text into the system's
    clipboard, emptying the clipboard prior to the copy.
@@ -2861,27 +2867,6 @@ clipboard
     PDC_setclipboard            -       -       -
     PDC_freeclipboard           -       -       -
     PDC_clearclipboard          -       -       -
-
-
-
---------------------------------------------------------------------------
-
-
-pdckbd
-------
-
-### Synopsis
-
-    unsigned long PDC_get_input_fd(void);
-
-### Description
-
-   PDC_get_input_fd() returns the file descriptor that PDCurses reads
-   its input from. It can be used for select().
-
-### Portability
-                             X/Open  ncurses  NetBSD
-    PDC_get_input_fd            -       -       -
 
 
 

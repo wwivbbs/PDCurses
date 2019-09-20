@@ -106,10 +106,8 @@ Screen size
 
 The default screen size is 80x25 characters (whatever size they may be),
 but you can override this via the environment variables PDC_COLS and/or
-PDC_LINES. (Some other ports use COLS and LINES; this is not done here
-because those values are, or should be, those of the controlling
-terminal, and PDCurses for SDL is independent of the terminal.) If
-pdc_screen is preinitialized (see below), these are ignored.
+PDC_LINES. If pdc_screen is preinitialized (see below), these are
+ignored.
 
 
 Integration with SDL
@@ -164,15 +162,6 @@ new background. (If you don't erase the curses screen, it will be
 incorporated into the background when you call PDC_retile().) But this
 only works if no background image is set.
 
-PDC_update_rects() is how the screen actually gets updated. For
-performance reasons, when drawing, PDCurses for SDL maintains a table of
-rectangles that need updating, and only updates (by calling this
-function) during getch(), napms(), or when the table gets full.
-Normally, this is sufficient; but if you're pausing in some way other
-than by using napms(), and you're not doing keyboard checks, you may get
-an incomplete update. If that happens, you can call PDC_update_rects()
-manually.
-
 
 Interaction with stdio
 ----------------------
@@ -192,5 +181,5 @@ The files in this directory are released to the public domain.
 Acknowledgements
 ----------------
 
-Original SDL port was provided by William McBrine <wmcbrine@gmail.com>
-TTF support is based on contributions by Laura Michaels.
+Original SDL port was provided by William McBrine
+TTF support based on contributions by Laura Michaels

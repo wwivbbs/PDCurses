@@ -101,11 +101,10 @@ color
 int COLORS = 0;
 int COLOR_PAIRS = PDC_COLOR_PAIRS;
 
-bool pdc_color_started = FALSE;
+/* COLOR_PAIR to attribute encoding table. */
 
-/* pair_set[] tracks whether a pair has been set via init_pair() */
+static struct {short f, b; bool set;} atrtab[PDC_COLOR_PAIRS];
 
-static bool pair_set[PDC_COLOR_PAIRS];
 static bool default_colors = FALSE;
 static short first_col = 0;
 
@@ -116,7 +115,7 @@ int start_color(void)
     if (!SP || SP->mono)
         return ERR;
 
-    pdc_color_started = TRUE;
+    SP->color_started = TRUE;
 
     PDC_set_blink(FALSE);   /* Also sets COLORS */
 
@@ -124,8 +123,6 @@ int start_color(void)
         default_colors = TRUE;
 
     PDC_init_atrtab();
-
-    memset(pair_set, 0, PDC_COLOR_PAIRS);
 
     return OK;
 }
@@ -139,33 +136,34 @@ static void _normalize(short *fg, short *bg)
         *bg = SP->orig_attr ? SP->orig_back : COLOR_BLACK;
 }
 
-int init_pair(short pair, short fg, short bg)
+static void _init_pair_core(short pair, short fg, short bg)
 {
-    PDC_LOG(("init_pair() - called: pair %d fg %d bg %d\n", pair, fg, bg));
-
-    if (!SP || !pdc_color_started || pair < 1 || pair >= COLOR_PAIRS ||
-        fg < first_col || fg >= COLORS || bg < first_col || bg >= COLORS)
-        return ERR;
-
     _normalize(&fg, &bg);
 
     /* To allow the PDC_PRESERVE_SCREEN option to work, we only reset
        curscr if this call to init_pair() alters a color pair created by
        the user. */
 
-    if (pair_set[pair])
+    if (atrtab[pair].set)
     {
-        short oldfg, oldbg;
-
-        PDC_pair_content(pair, &oldfg, &oldbg);
-
-        if (oldfg != fg || oldbg != bg)
+        if (atrtab[pair].f != fg || atrtab[pair].b != bg)
             curscr->_clear = TRUE;
     }
 
-    PDC_init_pair(pair, fg, bg);
+    atrtab[pair].f = fg;
+    atrtab[pair].b = bg;
+    atrtab[pair].set = TRUE;
+}
 
-    pair_set[pair] = TRUE;
+int init_pair(short pair, short fg, short bg)
+{
+    PDC_LOG(("init_pair() - called: pair %d fg %d bg %d\n", pair, fg, bg));
+
+    if (!SP || !SP->color_started || pair < 1 || pair >= COLOR_PAIRS ||
+        fg < first_col || fg >= COLORS || bg < first_col || bg >= COLORS)
+        return ERR;
+
+    _init_pair_core(pair, fg, bg);
 
     return OK;
 }
@@ -181,10 +179,12 @@ int init_color(short color, short red, short green, short blue)
 {
     PDC_LOG(("init_color() - called\n"));
 
-    if (color < 0 || color >= COLORS || !PDC_can_change_color() ||
+    if (!SP || color < 0 || color >= COLORS || !PDC_can_change_color() ||
         red < -1 || red > 1000 || green < -1 || green > 1000 ||
         blue < -1 || blue > 1000)
         return ERR;
+
+    SP->dirty = TRUE;
 
     return PDC_init_color(color, red, green, blue);
 }
@@ -227,7 +227,10 @@ int pair_content(short pair, short *fg, short *bg)
     if (pair < 0 || pair >= COLOR_PAIRS || !fg || !bg)
         return ERR;
 
-    return PDC_pair_content(pair, fg, bg);
+    *fg = atrtab[pair].f;
+    *bg = atrtab[pair].b;
+
+    return OK;
 }
 
 int assume_default_colors(int f, int b)
@@ -237,22 +240,8 @@ int assume_default_colors(int f, int b)
     if (f < -1 || f >= COLORS || b < -1 || b >= COLORS)
         return ERR;
 
-    if (pdc_color_started)
-    {
-        short fg, bg, oldfg, oldbg;
-
-        fg = f;
-        bg = b;
-
-        _normalize(&fg, &bg);
-
-        PDC_pair_content(0, &oldfg, &oldbg);
-
-        if (oldfg != fg || oldbg != bg)
-            curscr->_clear = TRUE;
-
-        PDC_init_pair(0, fg, bg);
-    }
+    if (SP->color_started)
+        _init_pair_core(0, f, b);
 
     return OK;
 }
@@ -283,7 +272,7 @@ void PDC_init_atrtab(void)
 {
     short i, fg, bg;
 
-    if (pdc_color_started && !default_colors)
+    if (SP->color_started && !default_colors)
     {
         fg = COLOR_WHITE;
         bg = COLOR_BLACK;
@@ -294,5 +283,9 @@ void PDC_init_atrtab(void)
     _normalize(&fg, &bg);
 
     for (i = 0; i < PDC_COLOR_PAIRS; i++)
-        PDC_init_pair(i, fg, bg);
+    {
+        atrtab[i].f = fg;
+        atrtab[i].b = bg;
+        atrtab[i].set = FALSE;
+    }
 }

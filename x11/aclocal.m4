@@ -1,7 +1,6 @@
 dnl ---------------------------------------------------------------------------
 dnl This file offers the following macros...
 dnl ---------------------------------------------------------------------------
-dnl MH_IPC
 dnl MH_CHECK_X_INC
 dnl MH_CHECK_X_LIB
 dnl MH_CHECK_X_HEADERS
@@ -11,19 +10,6 @@ dnl MH_SHARED_LIBRARY
 dnl MH_HOWTO_DYN_LINK
 dnl MH_CHECK_CC_O
 dnl MH_SHLPST
-dnl MH_CHECK_MAX_SIGNALS
-
-dnl ---------------------------------------------------------------------------
-dnl Determine if the system has System V IPC. ie sys/ipc.h and sys/shm.h
-dnl headers.
-dnl ---------------------------------------------------------------------------
-AC_DEFUN([MH_IPC],
-[
-AC_CHECK_HEADER(sys/ipc.h)
-if test $ac_cv_header_sys_ipc_h = no; then
-	AC_MSG_ERROR(Cannot find required header file sys/ipc.h; PDCurses cannot be configured)
-fi
-])dnl
 
 dnl ---------------------------------------------------------------------------
 dnl Set up the correct X header file location
@@ -565,30 +551,3 @@ esac
 AC_SUBST(SHLPST)
 AC_MSG_RESULT($SHLPST)
 ])
-
-dnl ---------------------------------------------------------------------------
-dnl Determine the system limit for number of signals
-dnl ---------------------------------------------------------------------------
-AC_DEFUN([MH_CHECK_MAX_SIGNALS],
-[
-save_CPPFLAGS="$CPPFLAGS"
-CPPFLAGS="$CPPFLAGS $SYS_DEFS"
-AC_MSG_CHECKING(for maximum signal specifier:)
-AC_CACHE_VAL(mh_cv_max_signals,
-mh_found="no"
-for mh_sigs in $1; do
-	AC_TRY_COMPILE([#include <signal.h>],
-[return $mh_sigs;],
-  mh_found="yes"; mh_cv_max_signals="$mh_sigs" )
-	if test "$mh_found" = "yes"; then
-		break;
-	fi
-done)
-CPPFLAGS="$save_CPPFLAGS"
-if test "$mh_found" = "no"; then
-	AC_MSG_ERROR(Cannot find a system limit for number of signals. PDCurses cannot be configured on this machine.)
-else
-	AC_DEFINE_UNQUOTED(PDC_MAX_SIGNALS,$mh_cv_max_signals)
-	AC_MSG_RESULT($mh_cv_max_signals)
-fi
-])dnl

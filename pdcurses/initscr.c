@@ -10,7 +10,7 @@ initscr
 ### Synopsis
 
     WINDOW *initscr(void);
-    WINDOW *Xinitscr(int argc, char *argv[]);
+    WINDOW *Xinitscr(int argc, char **argv);
     int endwin(void);
     bool isendwin(void);
     SCREEN *newterm(const char *type, FILE *outfd, FILE *infd);
@@ -106,30 +106,30 @@ const char *_curses_notice = "PDCurses " PDC_VERDOT " - " __DATE__;
 SCREEN *SP = (SCREEN*)NULL;           /* curses variables */
 WINDOW *curscr = (WINDOW *)NULL;      /* the current screen image */
 WINDOW *stdscr = (WINDOW *)NULL;      /* the default screen window */
-WINDOW *pdc_lastscr = (WINDOW *)NULL; /* the last screen image */
 
 int LINES = 0;                        /* current terminal height */
 int COLS = 0;                         /* current terminal width */
 int TABSIZE = 8;
 
-MOUSE_STATUS Mouse_status, pdc_mouse_status;
+MOUSE_STATUS Mouse_status;
 
 extern RIPPEDOFFLINE linesripped[5];
 extern char linesrippedoff;
 
-#ifndef XCURSES
-static
-#endif
-WINDOW *Xinitscr(int argc, char *argv[])
+WINDOW *initscr(void)
 {
     int i;
 
-    PDC_LOG(("Xinitscr() - called\n"));
+    PDC_LOG(("initscr() - called\n"));
 
     if (SP && SP->alive)
         return NULL;
 
-    if (PDC_scr_open(argc, argv) == ERR)
+    SP = calloc(1, sizeof(SCREEN));
+    if (!SP)
+        return NULL;
+
+    if (PDC_scr_open() == ERR)
     {
         fprintf(stderr, "initscr(): Unable to create SP\n");
         exit(8);
@@ -139,7 +139,7 @@ WINDOW *Xinitscr(int argc, char *argv[])
     SP->raw_out = FALSE;     /* tty I/O modes */
     SP->raw_inp = FALSE;     /* tty I/O modes */
     SP->cbreak = TRUE;
-    SP->save_key_modifiers = FALSE;
+    SP->key_modifiers = 0L;
     SP->return_key_modifiers = FALSE;
     SP->echo = TRUE;
     SP->visibility = 1;
@@ -149,11 +149,17 @@ WINDOW *Xinitscr(int argc, char *argv[])
     SP->linesrippedoffontop = 0;
     SP->delaytenths = 0;
     SP->line_color = -1;
+    SP->lastscr = (WINDOW *)NULL;
+    SP->dbfp = NULL;
+    SP->color_started = FALSE;
+    SP->dirty = FALSE;
+    SP->sel_start = -1;
+    SP->sel_end = -1;
 
     SP->orig_cursor = PDC_get_cursor_mode();
 
-    LINES = SP->lines;
-    COLS = SP->cols;
+    LINES = SP->lines = PDC_get_rows();
+    COLS = SP->cols = PDC_get_columns();
 
     if (LINES < 2 || COLS < 2)
     {
@@ -169,15 +175,15 @@ WINDOW *Xinitscr(int argc, char *argv[])
         exit(2);
     }
 
-    pdc_lastscr = newwin(LINES, COLS, 0, 0);
-    if (!pdc_lastscr)
+    SP->lastscr = newwin(LINES, COLS, 0, 0);
+    if (!SP->lastscr)
     {
-        fprintf(stderr, "initscr(): Unable to create pdc_lastscr.\n");
+        fprintf(stderr, "initscr(): Unable to create SP->lastscr.\n");
         exit(2);
     }
 
-    wattrset(pdc_lastscr, (chtype)(-1));
-    werase(pdc_lastscr);
+    wattrset(SP->lastscr, (chtype)(-1));
+    werase(SP->lastscr);
 
     PDC_slk_initialize();
     LINES -= SP->slklines;
@@ -234,15 +240,30 @@ WINDOW *Xinitscr(int argc, char *argv[])
 
     sprintf(ttytype, "pdcurses|PDCurses for %s", PDC_sysname());
 
+    SP->c_buffer = malloc(_INBUFSIZ * sizeof(int));
+    if (!SP->c_buffer)
+        return NULL;
+    SP->c_pindex = 0;
+    SP->c_gindex = 1;
+
+    SP->c_ungch = malloc(NUNGETCH * sizeof(int));
+    if (!SP->c_ungch)
+        return NULL;
+    SP->c_ungind = 0;
+    SP->c_ungmax = NUNGETCH;
+
     return stdscr;
 }
 
-WINDOW *initscr(void)
+#ifdef XCURSES
+WINDOW *Xinitscr(int argc, char **argv)
 {
-    PDC_LOG(("initscr() - called\n"));
+    PDC_LOG(("Xinitscr() - called\n"));
 
-    return Xinitscr(0, NULL);
+    PDC_set_args(argc, argv);
+    return initscr();
 }
+#endif
 
 int endwin(void)
 {
@@ -269,7 +290,7 @@ SCREEN *newterm(const char *type, FILE *outfd, FILE *infd)
 {
     PDC_LOG(("newterm() - called\n"));
 
-    return Xinitscr(0, NULL) ? SP : NULL;
+    return initscr() ? SP : NULL;
 }
 
 SCREEN *set_term(SCREEN *new)
@@ -285,22 +306,26 @@ void delscreen(SCREEN *sp)
 {
     PDC_LOG(("delscreen() - called\n"));
 
-    if (sp != SP)
+    if (!SP || sp != SP)
         return;
+
+    free(SP->c_ungch);
+    free(SP->c_buffer);
 
     PDC_slk_free();     /* free the soft label keys, if needed */
 
     delwin(stdscr);
     delwin(curscr);
-    delwin(pdc_lastscr);
+    delwin(SP->lastscr);
     stdscr = (WINDOW *)NULL;
     curscr = (WINDOW *)NULL;
-    pdc_lastscr = (WINDOW *)NULL;
+    SP->lastscr = (WINDOW *)NULL;
 
     SP->alive = FALSE;
 
-    PDC_scr_free();     /* free SP */
+    PDC_scr_free();
 
+    free(SP);
     SP = (SCREEN *)NULL;
 }
 
@@ -311,16 +336,23 @@ int resize_term(int nlines, int ncols)
     if (!stdscr || PDC_resize_screen(nlines, ncols) == ERR)
         return ERR;
 
+    SP->resized = FALSE;
+
     SP->lines = PDC_get_rows();
     LINES = SP->lines - SP->linesrippedoff - SP->slklines;
     SP->cols = COLS = PDC_get_columns();
 
+    if (SP->cursrow >= SP->lines)
+        SP->cursrow = SP->lines - 1;
+    if (SP->curscol >= SP->cols)
+        SP->curscol = SP->cols - 1;
+
     if (wresize(curscr, SP->lines, SP->cols) == ERR ||
         wresize(stdscr, LINES, COLS) == ERR ||
-        wresize(pdc_lastscr, SP->lines, SP->cols) == ERR)
+        wresize(SP->lastscr, SP->lines, SP->cols) == ERR)
         return ERR;
 
-    werase(pdc_lastscr);
+    werase(SP->lastscr);
     curscr->_clear = TRUE;
 
     if (SP->slk_winptr)

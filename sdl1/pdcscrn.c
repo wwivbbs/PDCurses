@@ -27,10 +27,6 @@ bool pdc_own_screen;
 
 static int max_height, max_width;
 
-/* COLOR_PAIR to attribute encoding table. */
-
-static struct {short f, b;} atrtab[PDC_COLOR_PAIRS];
-
 static void _clean(void)
 {
 #ifdef PDC_WIDE
@@ -87,8 +83,6 @@ void PDC_scr_close(void)
 
 void PDC_scr_free(void)
 {
-    if (SP)
-        free(SP);
 }
 
 static void _initialize_colors(void)
@@ -126,16 +120,11 @@ static void _initialize_colors(void)
                                    pdc_color[i].g, pdc_color[i].b);
 }
 
-/* open the physical screen -- allocate SP, miscellaneous intialization */
+/* open the physical screen -- miscellaneous initialization */
 
-int PDC_scr_open(int argc, char **argv)
+int PDC_scr_open(void)
 {
     PDC_LOG(("PDC_scr_open() - called\n"));
-
-    SP = calloc(1, sizeof(SCREEN));
-
-    if (!SP)
-        return ERR;
 
     pdc_own_screen = !pdc_screen;
 
@@ -281,10 +270,7 @@ int PDC_scr_open(int argc, char **argv)
     PDC_mouse_set();
 
     if (pdc_own_screen)
-        PDC_set_title(argc ? argv[0] : "PDCurses");
-
-    SP->lines = PDC_get_rows();
-    SP->cols = PDC_get_columns();
+        PDC_set_title("PDCurses");
 
     SP->mouse_wait = PDC_CLICK_PERIOD;
     SP->audible = FALSE;
@@ -324,9 +310,6 @@ int PDC_resize_screen(int nlines, int ncols)
     if (pdc_tileback)
         PDC_retile();
 
-    SP->resized = FALSE;
-    SP->cursrow = SP->curscol = 0;
-
     return OK;
 }
 
@@ -354,20 +337,6 @@ void PDC_save_screen_mode(int i)
 {
 }
 
-void PDC_init_pair(short pair, short fg, short bg)
-{
-    atrtab[pair].f = fg;
-    atrtab[pair].b = bg;
-}
-
-int PDC_pair_content(short pair, short *fg, short *bg)
-{
-    *fg = atrtab[pair].f;
-    *bg = atrtab[pair].b;
-
-    return OK;
-}
-
 bool PDC_can_change_color(void)
 {
     return TRUE;
@@ -390,8 +359,6 @@ int PDC_init_color(short color, short red, short green, short blue)
 
     pdc_mapped[color] = SDL_MapRGB(pdc_screen->format, pdc_color[color].r,
                                    pdc_color[color].g, pdc_color[color].b);
-
-    wrefresh(curscr);
 
     return OK;
 }

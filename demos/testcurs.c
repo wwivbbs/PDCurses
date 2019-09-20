@@ -2,8 +2,8 @@
  * This is a test program for PDCurses. Originally by
  * John Burnell <johnb@kea.am.dsir.govt.nz>
  *
- *  wrs(5/28/93) -- modified to be consistent (perform identically)
- *                  with either PDCurses or under Unix System V, R4
+ *  wrs (1993-05-28) -- modified to be consistent (perform identically)
+ *                      with either PDCurses or under Unix System V, R4
  */
 
 #ifndef _XOPEN_SOURCE_EXTENDED
@@ -39,9 +39,11 @@
 # define HAVE_COLOR 0
 #endif
 
-/* Set to non-zero if you want to test the PDCurses clipboard */
-
-#define HAVE_CLIPBOARD 0
+#ifdef PDCURSES
+# define HAVE_CLIPBOARD 1
+#else
+# define HAVE_CLIPBOARD 0
+#endif
 
 void inputTest(WINDOW *);
 void scrollTest(WINDOW *);
@@ -376,7 +378,6 @@ void inputTest(WINDOW *win)
 
 #ifdef PDCURSES
     mouse_set(ALL_MOUSE_EVENTS);
-    PDC_save_key_modifiers(TRUE);
     PDC_return_key_modifiers(TRUE);
 #endif
     curs_set(0);        /* turn cursor off */
@@ -494,7 +495,6 @@ void inputTest(WINDOW *win)
 
 #ifdef PDCURSES
     mouse_set(0L);
-    PDC_save_key_modifiers(FALSE);
     PDC_return_key_modifiers(FALSE);
 #endif
     wclear(win);
@@ -1143,6 +1143,8 @@ void extended(int tmarg)
 
     erase();
 
+    curs_set(0);
+
     attrset(A_BOLD);
     mvaddstr(tmarg, (COLS - 15) / 2, "Extended Colors");
     attrset(A_NORMAL);
@@ -1172,6 +1174,9 @@ void extended(int tmarg)
         addch(ch);
     }
 
+    refresh();
+    curs_set(1);
+
     mvaddstr(tmarg + 19, 3, "Press any key to continue");
     curTest();
 }
@@ -1183,6 +1188,8 @@ void gradient(int tmarg)
 
     erase();
     refresh();
+
+    curs_set(0);
 
     attrset(A_BOLD);
     mvaddstr(tmarg, (COLS - 17) / 2, "Colors Beyond 256");
@@ -1230,6 +1237,9 @@ void gradient(int tmarg)
             pnum++;
         }
     }
+
+    refresh();
+    curs_set(1);
 
     attrset(A_NORMAL);
     mvaddstr(tmarg + 19, 3, "Press any key to continue");

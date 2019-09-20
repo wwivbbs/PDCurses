@@ -37,10 +37,6 @@ Uint32 pdc_mapped[PDC_MAXCOL];
 int pdc_fheight, pdc_fwidth, pdc_fthick, pdc_flastc;
 bool pdc_own_window;
 
-/* COLOR_PAIR to attribute encoding table. */
-
-static struct {short f, b;} atrtab[PDC_COLOR_PAIRS];
-
 static void _clean(void)
 {
 #ifdef PDC_WIDE
@@ -97,8 +93,6 @@ void PDC_scr_close(void)
 
 void PDC_scr_free(void)
 {
-    if (SP)
-        free(SP);
 }
 
 static void _initialize_colors(void)
@@ -136,16 +130,11 @@ static void _initialize_colors(void)
                                    pdc_color[i].g, pdc_color[i].b);
 }
 
-/* open the physical screen -- allocate SP, miscellaneous intialization */
+/* open the physical screen -- miscellaneous initialization */
 
-int PDC_scr_open(int argc, char **argv)
+int PDC_scr_open(void)
 {
     PDC_LOG(("PDC_scr_open() - called\n"));
-
-    SP = calloc(1, sizeof(SCREEN));
-
-    if (!SP)
-        return ERR;
 
     pdc_own_window = !pdc_window;
 
@@ -256,21 +245,25 @@ int PDC_scr_open(int argc, char **argv)
         env = getenv("PDC_COLS");
         pdc_swidth = (env ? atoi(env) : 80) * pdc_fwidth;
 
-        pdc_window = SDL_CreateWindow((argc ? argv[0] : "PDCurses"),
+        pdc_window = SDL_CreateWindow("PDCurses",
             SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, pdc_swidth,
             pdc_sheight, SDL_WINDOW_RESIZABLE);
+
         if (pdc_window == NULL)
         {
             fprintf(stderr, "Could not open SDL window: %s\n", SDL_GetError());
             return ERR;
         }
+
         SDL_SetWindowIcon(pdc_window, pdc_icon);
 
         /* Events must be pumped before calling SDL_GetWindowSurface, or
            initial modifiers (e.g. numlock) will be ignored and out-of-sync. */
+
         SDL_PumpEvents();
 
         pdc_screen = SDL_GetWindowSurface(pdc_window);
+
         if (pdc_screen == NULL)
         {
             fprintf(stderr, "Could not open SDL window surface: %s\n",
@@ -307,12 +300,6 @@ int PDC_scr_open(int argc, char **argv)
     SDL_StartTextInput();
 
     PDC_mouse_set();
-
-    if (pdc_own_window)
-        PDC_set_title(argc ? argv[0] : "PDCurses");
-
-    SP->lines = PDC_get_rows();
-    SP->cols = PDC_get_columns();
 
     SP->mouse_wait = PDC_CLICK_PERIOD;
     SP->audible = FALSE;
@@ -360,9 +347,6 @@ int PDC_resize_screen(int nlines, int ncols)
     if (pdc_tileback)
         PDC_retile();
 
-    SP->resized = FALSE;
-    SP->cursrow = SP->curscol = 0;
-
     return OK;
 }
 
@@ -388,20 +372,6 @@ void PDC_save_screen_mode(int i)
 {
 }
 
-void PDC_init_pair(short pair, short fg, short bg)
-{
-    atrtab[pair].f = fg;
-    atrtab[pair].b = bg;
-}
-
-int PDC_pair_content(short pair, short *fg, short *bg)
-{
-    *fg = atrtab[pair].f;
-    *bg = atrtab[pair].b;
-
-    return OK;
-}
-
 bool PDC_can_change_color(void)
 {
     return TRUE;
@@ -424,8 +394,6 @@ int PDC_init_color(short color, short red, short green, short blue)
 
     pdc_mapped[color] = SDL_MapRGB(pdc_screen->format, pdc_color[color].r,
                                    pdc_color[color].g, pdc_color[color].b);
-
-    wrefresh(curscr);
 
     return OK;
 }
