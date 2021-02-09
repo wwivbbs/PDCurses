@@ -9,26 +9,26 @@
 
 Define before inclusion (only those needed):
 
-    XCURSES         True if compiling for X11.
-    PDC_RGB         True if you want to use RGB color definitions
-                    (Red = 1, Green = 2, Blue = 4) instead of BGR.
-    PDC_WIDE        True if building wide-character support.
-    PDC_DLL_BUILD   True if building a Windows DLL.
-    PDC_NCMOUSE     Use the ncurses mouse API instead
-                    of PDCurses' traditional mouse API.
+    XCURSES         if building / built for X11
+    PDC_RGB         if you want to use RGB color definitions
+                    (Red = 1, Green = 2, Blue = 4) instead of BGR
+    PDC_WIDE        if building / built with wide-character support
+    PDC_DLL_BUILD   if building / built as a Windows DLL
+    PDC_NCMOUSE     to use the ncurses mouse API instead
+                    of PDCurses' traditional mouse API
 
 Defined by this header:
 
-    PDCURSES        Enables access to PDCurses-only routines.
-    PDC_BUILD       Defines API build version.
-    PDC_VER_MAJOR   Major version number
-    PDC_VER_MINOR   Minor version number
-    PDC_VERDOT      Version string
+    PDCURSES        PDCurses-only features are available
+    PDC_BUILD       API build version
+    PDC_VER_MAJOR   major version number
+    PDC_VER_MINOR   minor version number
+    PDC_VERDOT      version string
 
 **man-end****************************************************************/
 
 #define PDCURSES        1
-#define PDC_BUILD    3904
+#define PDC_BUILD    3905
 #define PDC_VER_MAJOR   3
 #define PDC_VER_MINOR   9
 #define PDC_VERDOT   "3.9"
@@ -302,6 +302,15 @@ typedef struct _win       /* definition of a window */
     struct _win *_parent; /* subwin's pointer to parent win */
 } WINDOW;
 
+/* Color pair structure */
+
+typedef struct
+{
+    short f;              /* foreground color */
+    short b;              /* background color */
+    bool  set;            /* pair has been set */
+} PDC_PAIR;
+
 /* Avoid using the SCREEN struct directly -- use the corresponding
    functions if possible. This struct may eventually be made private. */
 
@@ -361,6 +370,7 @@ typedef struct
     int  *c_ungch;        /* array of ungotten chars */
     int   c_ungind;       /* ungetch() push index */
     int   c_ungmax;       /* allocated size of ungetch() buffer */
+    PDC_PAIR *atrtab;     /* table of color pairs */
 } SCREEN;
 
 /*----------------------------------------------------------------------

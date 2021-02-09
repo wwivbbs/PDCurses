@@ -83,14 +83,15 @@ bool PDC_check_key(void)
 {
     int haveevent;
 
-    /**
-     * SDL_TEXTINPUT can return multiple chars from the IME
-     * which we should handle before polling for additional
-     * events.
-     */
+    PDC_pump_and_peep();
+
+    /* SDL_TEXTINPUT can return multiple chars from the IME which we
+       should handle before polling for additional events. */
+
     if (event.type == SDL_TEXTINPUT && event.text.text[0])
         haveevent = 1;
-    else haveevent = SDL_PollEvent(&event);
+    else
+        haveevent = SDL_PollEvent(&event);
 
     return haveevent;
 }
@@ -409,9 +410,8 @@ int PDC_get_key(void)
     case SDL_QUIT:
         exit(1);
     case SDL_WINDOWEVENT:
-        switch (event.window.event)
+        if (SDL_WINDOWEVENT_SIZE_CHANGED == event.window.event)
         {
-        case SDL_WINDOWEVENT_SIZE_CHANGED:
             pdc_screen = SDL_GetWindowSurface(pdc_window);
             pdc_sheight = pdc_screen->h - pdc_xoffset;
             pdc_swidth = pdc_screen->w - pdc_yoffset;
@@ -424,10 +424,6 @@ int PDC_get_key(void)
                 SP->key_code = TRUE;
                 return KEY_RESIZE;
             }
-            break;
-        case SDL_WINDOWEVENT_RESTORED:
-        case SDL_WINDOWEVENT_EXPOSED:
-            SDL_UpdateWindowSurface(pdc_window);
         }
         break;
     case SDL_MOUSEMOTION:
