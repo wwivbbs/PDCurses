@@ -7,7 +7,6 @@ project (pdcurses)
 
 include_directories(.)
 include_directories(pdcurses)
-include_directories(win32)
 
 set(COMMON_SOURCES
 	pdcurses/addch.c
@@ -53,6 +52,7 @@ set(COMMON_SOURCES
   )
 
 if(WIN32)
+	include_directories(win32)
   set(PLATFORM_SOURCES 
 	wincon/pdcclip.c
 	wincon/pdcdisp.c
@@ -62,6 +62,28 @@ if(WIN32)
 	wincon/pdcsetsc.c
 	wincon/pdcutil.c
     )
+	set(PDCURSES_INCLUDE_DIRS ${PROJECT_SOURCE_DIR} 
+														${PROJECT_SOURCE_DIR}/pdcurses
+														${PROJECT_SOURCE_DIR}/win32
+														PARENT_SCOPE)
+endif()
+
+if(OS2)
+	include_directories(os2)
+  set(PLATFORM_SOURCES 
+	os2/pdcclip.c
+	os2/pdcdisp.c
+	os2/pdcgetsc.c
+	os2/pdckbd.c
+	os2/pdcos2.h
+	os2/pdcscrn.c
+	os2/pdcsetsc.c
+	os2/pdcutil.c
+    )
+	set(PDCURSES_INCLUDE_DIRS ${PROJECT_SOURCE_DIR} 
+														${PROJECT_SOURCE_DIR}/pdcurses
+														${PROJECT_SOURCE_DIR}/os2
+														PARENT_SCOPE)
 endif()
 
 if(MSVC)
@@ -70,8 +92,4 @@ endif()
 
 add_library(pdcurses ${COMMON_SOURCES} ${PLATFORM_SOURCES})
 
-set(PDCURSES_INCLUDE_DIRS ${PROJECT_SOURCE_DIR} 
-                          ${PROJECT_SOURCE_DIR}/pdcurses
-                          ${PROJECT_SOURCE_DIR}/win32
-                          PARENT_SCOPE)
 set(CURSES_LIBRARIES pdcurses PARENT_SCOPE)
