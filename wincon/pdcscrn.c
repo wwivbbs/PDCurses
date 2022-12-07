@@ -32,7 +32,7 @@ static short ansitocurs[16] =
 
 short pdc_curstoreal[16], pdc_curstoansi[16];
 short pdc_oldf, pdc_oldb, pdc_oldu;
-bool pdc_conemu, pdc_ansi;
+bool pdc_conemu, pdc_wt, pdc_ansi;
 
 enum { PDC_RESTORE_NONE, PDC_RESTORE_BUFFER };
 
@@ -402,9 +402,10 @@ int PDC_scr_open(void)
 #pragma warning(disable : 4996)
     is_nt = !(GetVersion() & 0x80000000);
 
-    str = getenv("ConEmuANSI");
+    pdc_wt = !!getenv("WT_SESSION");
+    str = pdc_wt ? NULL : getenv("ConEmuANSI");
     pdc_conemu = !!str;
-    pdc_ansi = pdc_conemu ? !strcmp(str, "ON") : FALSE;
+    pdc_ansi = pdc_wt ? TRUE : pdc_conemu ? !strcmp(str, "ON") : FALSE;
 
     GetConsoleScreenBufferInfo(pdc_con_out, &csbi);
     GetConsoleScreenBufferInfo(pdc_con_out, &orig_scr);
@@ -619,7 +620,7 @@ bool PDC_can_change_color(void)
 
 int PDC_color_content(short color, short *red, short *green, short *blue)
 {
-    if (color < 16 && !pdc_conemu)
+    if (color < 16 && !(pdc_conemu || pdc_wt))
     {
         COLORREF *color_table = _get_colors();
 
@@ -658,7 +659,7 @@ int PDC_init_color(short color, short red, short green, short blue)
         return OK;
     }
 
-    if (color < 16 && !pdc_conemu)
+    if (color < 16 && !(pdc_conemu || pdc_wt))
     {
         COLORREF *color_table = _get_colors();
 

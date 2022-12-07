@@ -17,9 +17,6 @@ Also consult the README for each specific platform you'll be using:
 - [Windows]
 - [X11]
 
-This directory also contains the files, CNAME and index.html, that
-create pdcurses.org, via GitHub.
-
 
 Building
 --------
@@ -27,11 +24,6 @@ Building
 - To rebuild MANUAL.md from the "man page" sections of the source code,
   type "./mkman.sh". Needs a Unix-like shell and a Python interpreter.
 
-
-Distribution Status
--------------------
-
-The files in this directory are released to the public domain.
 
 [User's Guide]: USERS.md
 [Implementor's Guide]: IMPLEMNT.md
